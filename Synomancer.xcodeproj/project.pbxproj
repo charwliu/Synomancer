@@ -1,0 +1,622 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01E4C52F2C7BFDDF00A8F0AF /* SynomancerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E4C52E2C7BFDDF00A8F0AF /* SynomancerApp.swift */; };
+		01E4C5312C7BFDDF00A8F0AF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E4C5302C7BFDDF00A8F0AF /* ContentView.swift */; };
+		01E4C5332C7BFDE000A8F0AF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01E4C5322C7BFDE000A8F0AF /* Assets.xcassets */; };
+		01E4C5372C7BFDE000A8F0AF /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01E4C5362C7BFDE000A8F0AF /* Preview Assets.xcassets */; };
+		01E4C5412C7BFDE000A8F0AF /* SynomancerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E4C5402C7BFDE000A8F0AF /* SynomancerTests.swift */; };
+		01E4C54B2C7BFDE000A8F0AF /* SynomancerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E4C54A2C7BFDE000A8F0AF /* SynomancerUITests.swift */; };
+		01E4C54D2C7BFDE000A8F0AF /* SynomancerUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E4C54C2C7BFDE000A8F0AF /* SynomancerUITestsLaunchTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		01E4C53D2C7BFDE000A8F0AF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 01E4C5232C7BFDDF00A8F0AF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 01E4C52A2C7BFDDF00A8F0AF;
+			remoteInfo = Synomancer;
+		};
+		01E4C5472C7BFDE000A8F0AF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 01E4C5232C7BFDDF00A8F0AF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 01E4C52A2C7BFDDF00A8F0AF;
+			remoteInfo = Synomancer;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		01E4C52B2C7BFDDF00A8F0AF /* Synomancer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Synomancer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		01E4C52E2C7BFDDF00A8F0AF /* SynomancerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynomancerApp.swift; sourceTree = "<group>"; };
+		01E4C5302C7BFDDF00A8F0AF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		01E4C5322C7BFDE000A8F0AF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		01E4C5342C7BFDE000A8F0AF /* Synomancer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Synomancer.entitlements; sourceTree = "<group>"; };
+		01E4C5362C7BFDE000A8F0AF /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		01E4C53C2C7BFDE000A8F0AF /* SynomancerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SynomancerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		01E4C5402C7BFDE000A8F0AF /* SynomancerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynomancerTests.swift; sourceTree = "<group>"; };
+		01E4C5462C7BFDE000A8F0AF /* SynomancerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SynomancerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		01E4C54A2C7BFDE000A8F0AF /* SynomancerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynomancerUITests.swift; sourceTree = "<group>"; };
+		01E4C54C2C7BFDE000A8F0AF /* SynomancerUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynomancerUITestsLaunchTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		01E4C5282C7BFDDF00A8F0AF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01E4C5392C7BFDE000A8F0AF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01E4C5432C7BFDE000A8F0AF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		01E4C5222C7BFDDF00A8F0AF = {
+			isa = PBXGroup;
+			children = (
+				01E4C52D2C7BFDDF00A8F0AF /* Synomancer */,
+				01E4C53F2C7BFDE000A8F0AF /* SynomancerTests */,
+				01E4C5492C7BFDE000A8F0AF /* SynomancerUITests */,
+				01E4C52C2C7BFDDF00A8F0AF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		01E4C52C2C7BFDDF00A8F0AF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				01E4C52B2C7BFDDF00A8F0AF /* Synomancer.app */,
+				01E4C53C2C7BFDE000A8F0AF /* SynomancerTests.xctest */,
+				01E4C5462C7BFDE000A8F0AF /* SynomancerUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		01E4C52D2C7BFDDF00A8F0AF /* Synomancer */ = {
+			isa = PBXGroup;
+			children = (
+				01E4C52E2C7BFDDF00A8F0AF /* SynomancerApp.swift */,
+				01E4C5302C7BFDDF00A8F0AF /* ContentView.swift */,
+				01E4C5322C7BFDE000A8F0AF /* Assets.xcassets */,
+				01E4C5342C7BFDE000A8F0AF /* Synomancer.entitlements */,
+				01E4C5352C7BFDE000A8F0AF /* Preview Content */,
+			);
+			path = Synomancer;
+			sourceTree = "<group>";
+		};
+		01E4C5352C7BFDE000A8F0AF /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				01E4C5362C7BFDE000A8F0AF /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		01E4C53F2C7BFDE000A8F0AF /* SynomancerTests */ = {
+			isa = PBXGroup;
+			children = (
+				01E4C5402C7BFDE000A8F0AF /* SynomancerTests.swift */,
+			);
+			path = SynomancerTests;
+			sourceTree = "<group>";
+		};
+		01E4C5492C7BFDE000A8F0AF /* SynomancerUITests */ = {
+			isa = PBXGroup;
+			children = (
+				01E4C54A2C7BFDE000A8F0AF /* SynomancerUITests.swift */,
+				01E4C54C2C7BFDE000A8F0AF /* SynomancerUITestsLaunchTests.swift */,
+			);
+			path = SynomancerUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		01E4C52A2C7BFDDF00A8F0AF /* Synomancer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01E4C5502C7BFDE000A8F0AF /* Build configuration list for PBXNativeTarget "Synomancer" */;
+			buildPhases = (
+				01E4C5272C7BFDDF00A8F0AF /* Sources */,
+				01E4C5282C7BFDDF00A8F0AF /* Frameworks */,
+				01E4C5292C7BFDDF00A8F0AF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Synomancer;
+			productName = Synomancer;
+			productReference = 01E4C52B2C7BFDDF00A8F0AF /* Synomancer.app */;
+			productType = "com.apple.product-type.application";
+		};
+		01E4C53B2C7BFDE000A8F0AF /* SynomancerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01E4C5532C7BFDE000A8F0AF /* Build configuration list for PBXNativeTarget "SynomancerTests" */;
+			buildPhases = (
+				01E4C5382C7BFDE000A8F0AF /* Sources */,
+				01E4C5392C7BFDE000A8F0AF /* Frameworks */,
+				01E4C53A2C7BFDE000A8F0AF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				01E4C53E2C7BFDE000A8F0AF /* PBXTargetDependency */,
+			);
+			name = SynomancerTests;
+			productName = SynomancerTests;
+			productReference = 01E4C53C2C7BFDE000A8F0AF /* SynomancerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		01E4C5452C7BFDE000A8F0AF /* SynomancerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01E4C5562C7BFDE000A8F0AF /* Build configuration list for PBXNativeTarget "SynomancerUITests" */;
+			buildPhases = (
+				01E4C5422C7BFDE000A8F0AF /* Sources */,
+				01E4C5432C7BFDE000A8F0AF /* Frameworks */,
+				01E4C5442C7BFDE000A8F0AF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				01E4C5482C7BFDE000A8F0AF /* PBXTargetDependency */,
+			);
+			name = SynomancerUITests;
+			productName = SynomancerUITests;
+			productReference = 01E4C5462C7BFDE000A8F0AF /* SynomancerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		01E4C5232C7BFDDF00A8F0AF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+				TargetAttributes = {
+					01E4C52A2C7BFDDF00A8F0AF = {
+						CreatedOnToolsVersion = 15.4;
+					};
+					01E4C53B2C7BFDE000A8F0AF = {
+						CreatedOnToolsVersion = 15.4;
+						TestTargetID = 01E4C52A2C7BFDDF00A8F0AF;
+					};
+					01E4C5452C7BFDE000A8F0AF = {
+						CreatedOnToolsVersion = 15.4;
+						TestTargetID = 01E4C52A2C7BFDDF00A8F0AF;
+					};
+				};
+			};
+			buildConfigurationList = 01E4C5262C7BFDDF00A8F0AF /* Build configuration list for PBXProject "Synomancer" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 01E4C5222C7BFDDF00A8F0AF;
+			productRefGroup = 01E4C52C2C7BFDDF00A8F0AF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				01E4C52A2C7BFDDF00A8F0AF /* Synomancer */,
+				01E4C53B2C7BFDE000A8F0AF /* SynomancerTests */,
+				01E4C5452C7BFDE000A8F0AF /* SynomancerUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		01E4C5292C7BFDDF00A8F0AF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				01E4C5372C7BFDE000A8F0AF /* Preview Assets.xcassets in Resources */,
+				01E4C5332C7BFDE000A8F0AF /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01E4C53A2C7BFDE000A8F0AF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01E4C5442C7BFDE000A8F0AF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		01E4C5272C7BFDDF00A8F0AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				01E4C5312C7BFDDF00A8F0AF /* ContentView.swift in Sources */,
+				01E4C52F2C7BFDDF00A8F0AF /* SynomancerApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01E4C5382C7BFDE000A8F0AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				01E4C5412C7BFDE000A8F0AF /* SynomancerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01E4C5422C7BFDE000A8F0AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				01E4C54B2C7BFDE000A8F0AF /* SynomancerUITests.swift in Sources */,
+				01E4C54D2C7BFDE000A8F0AF /* SynomancerUITestsLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		01E4C53E2C7BFDE000A8F0AF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 01E4C52A2C7BFDDF00A8F0AF /* Synomancer */;
+			targetProxy = 01E4C53D2C7BFDE000A8F0AF /* PBXContainerItemProxy */;
+		};
+		01E4C5482C7BFDE000A8F0AF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 01E4C52A2C7BFDDF00A8F0AF /* Synomancer */;
+			targetProxy = 01E4C5472C7BFDE000A8F0AF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		01E4C54E2C7BFDE000A8F0AF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		01E4C54F2C7BFDE000A8F0AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		01E4C5512C7BFDE000A8F0AF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Synomancer/Synomancer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Synomancer/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.Synomancer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		01E4C5522C7BFDE000A8F0AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Synomancer/Synomancer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Synomancer/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.Synomancer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		01E4C5542C7BFDE000A8F0AF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.SynomancerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Synomancer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Synomancer";
+			};
+			name = Debug;
+		};
+		01E4C5552C7BFDE000A8F0AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.SynomancerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Synomancer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Synomancer";
+			};
+			name = Release;
+		};
+		01E4C5572C7BFDE000A8F0AF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.SynomancerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Synomancer;
+			};
+			name = Debug;
+		};
+		01E4C5582C7BFDE000A8F0AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.SynomancerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Synomancer;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		01E4C5262C7BFDDF00A8F0AF /* Build configuration list for PBXProject "Synomancer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01E4C54E2C7BFDE000A8F0AF /* Debug */,
+				01E4C54F2C7BFDE000A8F0AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		01E4C5502C7BFDE000A8F0AF /* Build configuration list for PBXNativeTarget "Synomancer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01E4C5512C7BFDE000A8F0AF /* Debug */,
+				01E4C5522C7BFDE000A8F0AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		01E4C5532C7BFDE000A8F0AF /* Build configuration list for PBXNativeTarget "SynomancerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01E4C5542C7BFDE000A8F0AF /* Debug */,
+				01E4C5552C7BFDE000A8F0AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		01E4C5562C7BFDE000A8F0AF /* Build configuration list for PBXNativeTarget "SynomancerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01E4C5572C7BFDE000A8F0AF /* Debug */,
+				01E4C5582C7BFDE000A8F0AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 01E4C5232C7BFDDF00A8F0AF /* Project object */;
+}
