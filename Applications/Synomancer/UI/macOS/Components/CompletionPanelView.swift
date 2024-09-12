@@ -8,7 +8,6 @@
 
 #if os(macOS)
 import SwiftUI
-import Magnet
 import WrappingHStack
 
 enum CompletionsPromptMode {

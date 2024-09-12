@@ -11,7 +11,7 @@ import SwiftUI
 
 @Observable
 final class CompletionsStore {
-    static let shared = CompletionsStore(swiftDataService: SwiftDataService.shared)
+    @MainActor static let shared = CompletionsStore(swiftDataService: SwiftDataService.shared)
     private var swiftDataService: SwiftDataService
     
     var completions: [CompletionInstructionSD] = []
