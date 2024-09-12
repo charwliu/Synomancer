@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Synomancer uses speech recognition for dictating notes.</string>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>Synomancer can perform operatios on selected text such as fixing grammar, extending texts as well as custom commands.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

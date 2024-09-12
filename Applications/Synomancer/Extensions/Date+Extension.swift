@@ -1,0 +1,31 @@
+//
+//  Date+Extension.swift
+//  Synomancer
+//
+//  Created by Liu Wei on 2024/9/9.
+//
+
+import Foundation
+
+extension Date {
+    func daysAgoString() -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.day], from: self, to: now)
+        
+        guard let daysAgo = components.day else {
+            return "Today"
+        }
+        
+        switch daysAgo {
+        case 0:
+            return "Today"
+        case 1:
+            return "1 day ago"
+        default:
+            return "\(daysAgo) days ago"
+        }
+    }
+}
+
+

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:Package.swift">
+   </FileRef>
+   <Group
+      location = "container:"
+      name = "Libraries">
+      <FileRef
+         location = "group:Libraries/LLM">
+      </FileRef>
+   </Group>
+   <Group
+      location = "container:"
+      name = "Applications">
+      <FileRef
+         location = "group:Applications/Synomancer.xcodeproj">
+      </FileRef>
+   </Group>
+</Workspace>
