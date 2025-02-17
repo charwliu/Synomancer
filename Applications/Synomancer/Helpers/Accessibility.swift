@@ -10,16 +10,17 @@
 #if os(macOS)
 import Foundation
 import AppKit
-import ApplicationServices
+@preconcurrency import ApplicationServices
 import CoreGraphics
 
-final class Accessibility {
+final class Accessibility: Sendable {
     static let shared = Accessibility()
 
     /// Check if Enchanted has the right permissions
     func checkAccessibility() -> Bool {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false, ]
-        return AXIsProcessTrustedWithOptions(options as CFDictionary)
+        let prompt = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        let options: NSDictionary = [prompt: true]
+        return AXIsProcessTrustedWithOptions(options)
     }
     
     func showAccessibilityInstructionsWindow() {

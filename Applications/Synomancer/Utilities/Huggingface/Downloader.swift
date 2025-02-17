@@ -9,7 +9,9 @@
 import Combine
 import Foundation
 
-class Downloader: NSObject, ObservableObject {
+class Downloader: NSObject, ObservableObject, @unchecked Sendable {
+    var progress: Double = 0
+    
     private(set) var destination: URL
 
     enum DownloadState {
@@ -50,6 +52,11 @@ class Downloader: NSObject, ObservableObject {
         setupDownload(from: url, with: authToken)
     }
 
+    func download(from url: URL, with authToken: String?) async throws {
+        let (downloadURL, _) = try await URLSession.shared.download(from: url, delegate: self)
+        try FileManager.default.moveItem(at: downloadURL, to: destination)
+    }
+    
     private func setupDownload(from url: URL, with authToken: String?) {
         downloadState.value = .downloading(0)
         urlSession?.getAllTasks { tasks in
@@ -104,36 +111,20 @@ class Downloader: NSObject, ObservableObject {
 }
 
 extension Downloader: URLSessionDownloadDelegate {
-    func urlSession(
-        _: URLSession, downloadTask: URLSessionDownloadTask, didWriteData _: Int64,
-        totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
-    ) {
-        downloadState.value = .downloading(
-            Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
-    }
-
-    func urlSession(
-        _: URLSession, downloadTask _: URLSessionDownloadTask, didFinishDownloadingTo location: URL
-    ) {
-        do {
-            // If the downloaded file already exists on the filesystem, overwrite it
-            try FileManager.default.moveDownloadedFile(from: location, to: self.destination)
-            downloadState.value = .completed(destination)
-        } catch {
-            downloadState.value = .failed(error)
+    nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                                didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
+                                totalBytesExpectedToWrite: Int64) {
+        Task {
+            await MainActor.run {
+                progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+            }
         }
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
-    {
-        if let error = error {
-            downloadState.value = .failed(error)
-            //        } else if let response = task.response as? HTTPURLResponse {
-            //            print("HTTP response status code: \(response.statusCode)")
-            //            let headers = response.allHeaderFields
-            //            print("HTTP response headers: \(headers)")
-        }
+    nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        // Intentionally left empty
     }
+    
 }
 
 extension FileManager {

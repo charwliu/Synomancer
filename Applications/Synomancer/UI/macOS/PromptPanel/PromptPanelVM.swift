@@ -50,20 +50,17 @@ final class CompletionsPanelVM {
         currentMessageBuffer = ""
         messageResponse = ""
         
-        print("request", request.messages)
+        logger.info("request: \(request.messages)")
         Task {
             if await OllamaService.shared.ollamaKit.reachable() {
-                generation = OllamaService.shared.ollamaKit.chat(data: request)
-                    .sink(receiveCompletion: { [weak self] completion in
-                        switch completion {
-                        case .finished:
-                            self?.handleComplete()
-                        case .failure(let error):
-                            self?.handleError(error.localizedDescription)
-                        }
-                    }, receiveValue: { [weak self] response in
-                        self?.handleReceive(response)
-                    })
+                do {
+                    for try await response in OllamaService.shared.ollamaKit.chat(data: request) {
+                        self.handleReceive(response)
+                    }
+                } catch {
+                    self.handleError(error.localizedDescription)
+                }
+                self.handleComplete()
             } else {
                 self.handleError("Server unreachable")
             }

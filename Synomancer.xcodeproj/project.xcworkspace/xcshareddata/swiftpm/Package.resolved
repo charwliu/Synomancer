@@ -1,5 +1,5 @@
 {
-  "originHash" : "802e1c72e5f1d401104efc43b83fb5dfaa58c70e73d1efa2d66c8a396872d9f5",
+  "originHash" : "f11b5b7f61a019c0009dea65c4ae32a893f03c757079b2510b8a26cbc995200d",
   "pins" : [
     {
       "identity" : "activityindicatorview",
@@ -38,21 +38,12 @@
       }
     },
     {
-      "identity" : "defaults",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/sindresorhus/Defaults",
-      "state" : {
-        "branch" : "main",
-        "revision" : "4c009d5c2496e7aa126e922c94dd3d6ae049efa2"
-      }
-    },
-    {
       "identity" : "jinja",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/maiqingqiang/Jinja",
+      "location" : "https://github.com/johnmai-dev/Jinja",
       "state" : {
-        "revision" : "5b0703d19a8901b76948753e5c5e3ca77043d33f",
-        "version" : "1.0.0"
+        "revision" : "bbddb92fc51ae420b87300298370fd1dfc308f73",
+        "version" : "1.1.1"
       }
     },
     {
@@ -65,21 +56,12 @@
       }
     },
     {
-      "identity" : "luminare",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/MrKai77/Luminare.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "18b70da9b042b3b55199e8b48740540a6eb0fd2e"
-      }
-    },
-    {
       "identity" : "mlx-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ml-explore/mlx-swift",
+      "location" : "https://github.com/charwliu/mlx-swift",
       "state" : {
-        "revision" : "f27763bef455d76f9455e9dfc6704a6b2859fa26",
-        "version" : "0.16.2"
+        "revision" : "3897e8f5a58fae678af7aa7654198c3cadfafe7c",
+        "version" : "0.21.3"
       }
     },
     {
@@ -87,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gonzalezreal/NetworkImage",
       "state" : {
-        "revision" : "7aff8d1b31148d32c5933d75557d42f6323ee3d1",
-        "version" : "6.0.0"
+        "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
+        "version" : "6.0.1"
       }
     },
     {
@@ -96,8 +78,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/kevinhermawan/OllamaKit.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "f947524e08fa8b0ddb875834a81ed7b4cf9ea23a"
+        "revision" : "791c4c74ee3e67a5bb4a50dc6620c590f119cfd1",
+        "version" : "5.0.7"
+      }
+    },
+    {
+      "identity" : "rainbow",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/onevcat/Rainbow",
+      "state" : {
+        "revision" : "e0dada9cd44e3fa7ec3b867e49a8ddbf543e3df3",
+        "version" : "4.0.1"
       }
     },
     {
@@ -128,12 +119,21 @@
       }
     },
     {
+      "identity" : "swift-cmark",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-cmark",
+      "state" : {
+        "revision" : "3ccff77b2dc5b96b77db3da0d68d28068593fa53",
+        "version" : "0.5.0"
+      }
+    },
+    {
       "identity" : "swift-collections",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-collections.git",
       "state" : {
-        "revision" : "9bf03ff58ce34478e66aaee630e491823326fd06",
-        "version" : "1.1.3"
+        "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
+        "version" : "1.1.4"
       }
     },
     {
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gonzalezreal/swift-markdown-ui",
       "state" : {
-        "revision" : "55441810c0f678c78ed7e2ebd46dde89228e02fc",
-        "version" : "2.4.0"
+        "revision" : "5f613358148239d0292c0cef674a3c2314737f9e",
+        "version" : "2.4.1"
       }
     },
     {
@@ -166,10 +166,10 @@
     {
       "identity" : "swift-transformers",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/huggingface/swift-transformers.git",
+      "location" : "https://github.com/huggingface/swift-transformers",
       "state" : {
-        "revision" : "104e8ceb1bb714c4aa1619fa20bdfeb537433492",
-        "version" : "0.1.11"
+        "revision" : "8a83416cc00ab07a5de9991e6ad817a9b8588d20",
+        "version" : "0.1.15"
       }
     },
     {
@@ -188,6 +188,15 @@
       "state" : {
         "revision" : "cdc902f828e8c457f601e744cc7607148dcdb91a",
         "version" : "0.2.2"
+      }
+    },
+    {
+      "identity" : "swiftytexttable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/scottrhoyt/SwiftyTextTable.git",
+      "state" : {
+        "revision" : "c6df6cf533d120716bff38f8ff9885e1ce2a4ac3",
+        "version" : "0.9.0"
       }
     },
     {

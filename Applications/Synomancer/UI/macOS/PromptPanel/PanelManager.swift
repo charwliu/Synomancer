@@ -19,6 +19,8 @@ final actor Printer {
     }
 }
 
+
+@MainActor
 class PanelManager: NSObject, NSApplicationDelegate {
     var targetApplication: NSRunningApplication?
     var lastPrintApplication: NSRunningApplication?
@@ -31,8 +33,8 @@ class PanelManager: NSObject, NSApplicationDelegate {
         super.init()
         
         Task {
-            await NSApp.setActivationPolicy(.regular)
-            await NSApp.activate(ignoringOtherApps: true)
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
             await handleNewMessages()
         }
     }
@@ -43,14 +45,14 @@ class PanelManager: NSObject, NSApplicationDelegate {
             // If user focused different application stop writing
             if lastPrintApplication != nil && lastPrintApplication?.localizedName != NSWorkspace.shared.runningApplications.first(where: {$0.isActive})?.localizedName {
                 // dequeue all and stop execution
-                await completionsPanelVM.cancel()
+                completionsPanelVM.cancel()
                 _ = await completionsPanelVM.sentenceQueue.dequeueAll()
                 lastPrintApplication = nil
                 continue
             }
             
             // hold printing until user action and ensuring that your driving experience
-            if await !allowPrinting {
+            if !allowPrinting {
                 continue
             }
             

@@ -13,7 +13,7 @@ import AVFoundation
 struct RecordingView: View {
     @StateObject var speechRecognizer: SpeechRecognizer = SpeechRecognizer()
     @Binding var isRecording: Bool
-    var onComplete: (_ transcription: String) -> () = {_ in}
+    var onComplete: @Sendable @MainActor (_ transcription: String) -> () = {_ in}
     
     private func toggleRecord() {
         Task {
@@ -67,8 +67,6 @@ struct RecordingView: View {
 }
 
 
-struct MeetingView_Previews: PreviewProvider {
-    static var previews: some View {
-        RecordingView(speechRecognizer: SpeechRecognizer(), isRecording: .constant(true))
-    }
+#Preview {
+    RecordingView(speechRecognizer: SpeechRecognizer(), isRecording: .constant(true))
 }

@@ -9,35 +9,39 @@
 #if os(iOS)
 import UIKit
 
-class Haptics: @unchecked Sendable {
+final class Haptics: Sendable {
     static let shared = Haptics()
     
     private init() { }
 
-    private func play(_ feedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle) {
+    private func play(_ feedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle) async {
         let vibrations = UserDefaults.standard.bool(forKey: "vibrations")
         if vibrations {
-            UIImpactFeedbackGenerator(style: feedbackStyle).impactOccurred()
+            await UIImpactFeedbackGenerator(style: feedbackStyle).impactOccurred()
         }
     }
     
-    private func notify(_ feedbackType: UINotificationFeedbackGenerator.FeedbackType) {
+    private func notify(_ feedbackType: UINotificationFeedbackGenerator.FeedbackType) async {
         let vibrations = UserDefaults.standard.bool(forKey: "vibrations")
         if vibrations {
-            UINotificationFeedbackGenerator().notificationOccurred(feedbackType)
+            await UINotificationFeedbackGenerator().notificationOccurred(feedbackType)
         }
     }
     
     func lightTap() {
-        play(.light)
+        Task {
+            await play(.light)
+        }
     }
     
-    func mediumTap() {
-        play(.medium)
+    func mediumTap() async {
+        Task {
+            await play(.medium)
+        }
     }
 }
 #else
-class Haptics: @unchecked Sendable {
+final class Haptics: Sendable {
     static let shared = Haptics()
     func lightTap() {}
     func mediumTap() async {}

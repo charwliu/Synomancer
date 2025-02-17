@@ -1,11 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "playstore.png",
+      "filename" : "origin_128.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "origin_256.png",
       "idiom" : "universal",
       "scale" : "2x"
     },

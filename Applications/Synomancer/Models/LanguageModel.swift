@@ -8,12 +8,13 @@
 
 import Foundation
 
-struct LanguageModel {
+struct LanguageModel: Sendable {
     var name: String
     var provider: ModelProvider
     var imageSupport: Bool
 }
 
-enum ModelProvider: Codable {
+enum ModelProvider: Codable, Sendable {
     case ollama
+    case mlx
 }

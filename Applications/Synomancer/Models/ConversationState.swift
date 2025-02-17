@@ -8,7 +8,7 @@
 
 import Foundation
 
-enum ConversationState: Equatable {
+enum ConversationState: Equatable, Sendable {
     case loading
     case completed
     case error(message: String)

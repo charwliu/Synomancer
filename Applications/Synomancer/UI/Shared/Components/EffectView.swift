@@ -2,11 +2,10 @@
 //  EffectView.swift
 //  Synomancer
 //
-//  Created by John Mai on 2024/3/10.
-//
 
 import SwiftUI
 
+#if os(macOS)
 /// A SwiftUI Wrapper for `NSVisualEffectView`
 ///
 /// ## Usage
@@ -71,3 +70,5 @@ struct EffectView: NSViewRepresentable {
         }
     }
 }
+
+#endif

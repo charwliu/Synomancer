@@ -139,6 +139,6 @@ struct CompletionsEditorView: View {
 }
 
 #Preview {
-    CompletionsEditorView(completions: .constant(CompletionInstructionSD.samples), onSave: {}, onDelete: {_ in }, accessibilityAccess: false, requestAccessibilityAccess: {})
+    CompletionsEditorView(completions: .constant(CompletionInstructionSD.sample), onSave: {}, onDelete: {_ in }, accessibilityAccess: false, requestAccessibilityAccess: {})
 }
 #endif

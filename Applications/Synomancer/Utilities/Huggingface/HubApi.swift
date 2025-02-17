@@ -10,6 +10,8 @@
 import Foundation
 
 public class HubApi {
+    nonisolated(unsafe) public static let shared = HubApi()
+    
     var downloadBase: URL
     var hfToken: String?
     var endpoint: String
@@ -36,7 +38,7 @@ public class HubApi {
         self.useBackgroundSession = useBackgroundSession
     }
 
-    nonisolated(unsafe) public static let shared = HubApi()
+    
 }
 
 /// File retrieval
@@ -116,7 +118,7 @@ extension HubApi {
     public func configuration(fileURL: URL) throws -> Config {
         let data = try Data(contentsOf: fileURL)
         let parsed = try JSONSerialization.jsonObject(with: data, options: [])
-        guard let dictionary = parsed as? [String: Any] else { throw Hub.HubClientError.parse }
+        guard let dictionary = parsed as? [String: Sendable] else { throw Hub.HubClientError.parse }
         return Config(dictionary)
     }
 }
@@ -130,7 +132,7 @@ extension HubApi {
         let (data, _) = try await httpGet(for: url)
 
         let parsed = try JSONSerialization.jsonObject(with: data, options: [])
-        guard let dictionary = parsed as? [String: Any] else { throw Hub.HubClientError.parse }
+        guard let dictionary = parsed as? [String: Sendable] else { throw Hub.HubClientError.parse }
         return Config(dictionary)
     }
 }
@@ -184,6 +186,8 @@ extension HubApi {
             try prepareDestination()
             let downloader = Downloader(
                 from: source, to: destination, using: hfToken, inBackground: backgroundSession)
+            try await downloader.download(from: source, with: hfToken)
+            
             let downloadSubscriber = downloader.downloadState.sink { state in
                 if case .downloading(let progress) = state {
                     do {
@@ -205,10 +209,10 @@ extension HubApi {
     
     @discardableResult
     public func snapshot(
-        from repo: Repo, matching globs: [String] = [],
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        from repo: sending Repo, matching globs: sending [String] = [],
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
-        self.currentTask = Task {
+//        self.currentTask = Task {
             let filenames = try await getFilenames(from: repo, matching: globs)
             let progress = Progress(totalUnitCount: Int64(filenames.count))
             let repoDestination = localRepoLocation(repo)
@@ -238,15 +242,15 @@ extension HubApi {
             }
             progressHandler(progress)
             return repoDestination
-        }
-        return try await currentTask!.value
+//        }
+//       return try await currentTask!.value
     }
 
 
     @discardableResult
     public func snapshot(
         from repoId: String, matching globs: [String] = [],
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await snapshot(
             from: Repo(id: repoId), matching: globs, progressHandler: progressHandler)
@@ -255,7 +259,7 @@ extension HubApi {
     @discardableResult
     public func snapshot(
         from repo: Repo, matching glob: String,
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await snapshot(from: repo, matching: [glob], progressHandler: progressHandler)
     }
@@ -263,7 +267,7 @@ extension HubApi {
     @discardableResult
     public func snapshot(
         from repoId: String, matching glob: String,
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await snapshot(
             from: Repo(id: repoId), matching: [glob], progressHandler: progressHandler)
@@ -297,7 +301,7 @@ extension Hub {
 
     public static func snapshot(
         from repo: Repo, matching globs: [String] = [],
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await HubApi.shared.snapshot(
             from: repo, matching: globs, progressHandler: progressHandler)
@@ -305,7 +309,7 @@ extension Hub {
 
     public static func snapshot(
         from repoId: String, matching globs: [String] = [],
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await HubApi.shared.snapshot(
             from: Repo(id: repoId), matching: globs, progressHandler: progressHandler)
@@ -313,7 +317,7 @@ extension Hub {
 
     public static func snapshot(
         from repo: Repo, matching glob: String,
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await HubApi.shared.snapshot(
             from: repo, matching: glob, progressHandler: progressHandler)
@@ -321,7 +325,7 @@ extension Hub {
 
     public static func snapshot(
         from repoId: String, matching glob: String,
-        progressHandler: @escaping (Progress) -> Void = { _ in }
+        progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
         return try await HubApi.shared.snapshot(
             from: Repo(id: repoId), matching: glob, progressHandler: progressHandler)
@@ -343,3 +347,25 @@ extension HubApi {
         currentTask?.cancel()
     }
 }
+
+
+extension HubApi {
+    func getAverageTemperature() async {
+        let fetchTask = Task { () -> Double in
+            let url = URL(string: "https://hws.dev/readings.json")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let readings = try JSONDecoder().decode([Double].self, from: data)
+            let sum = readings.reduce(0, +)
+            return sum / Double(readings.count)
+        }
+        
+        do {
+            let result = try await fetchTask.value
+            print("Average temperature: \(result)")
+        } catch {
+            print("Failed to get data.")
+        }
+    }
+}
+
+

@@ -5,9 +5,11 @@
 //  Created by John Mai on 2024/8/18.
 //
 
-import MarkdownUI
+@preconcurrency import MarkdownUI
 import SwiftUI
+import Foundation
 
+@MainActor
 extension MarkdownUI.Theme {
     static let customGitHub = Theme.gitHub.text {
         ForegroundColor(.white)
@@ -28,9 +30,8 @@ extension MarkdownUI.Theme {
                 Spacer()
 
                 Button {
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(configuration.content, forType: .string)
+                    let pasteboard = Clipboard.shared
+                    pasteboard.setString(configuration.content)
                 } label: {
                     Image(systemName: "clipboard")
                 }

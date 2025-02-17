@@ -10,9 +10,9 @@ import Foundation
 import SwiftUI
 
 @Observable
-final class CompletionsStore {
-    @MainActor static let shared = CompletionsStore(swiftDataService: SwiftDataService.shared)
-    private var swiftDataService: SwiftDataService
+final class CompletionsStore: @unchecked Sendable {
+    static let shared = CompletionsStore(swiftDataService: SwiftDataService.shared)
+    private let swiftDataService: SwiftDataService
     
     var completions: [CompletionInstructionSD] = []
     
@@ -40,7 +40,7 @@ final class CompletionsStore {
             loadedCompletions = (try? await SwiftDataService.shared.fetchCompletionInstructions()) ?? []
             
             if loadedCompletions.count == 0 {
-                try? await SwiftDataService.shared.updateCompletionInstructions(CompletionInstructionSD.samples)
+                try? await SwiftDataService.shared.updateCompletionInstructions(CompletionInstructionSD.sample)
                 loadedCompletions = (try? await SwiftDataService.shared.fetchCompletionInstructions()) ?? []
             }
             

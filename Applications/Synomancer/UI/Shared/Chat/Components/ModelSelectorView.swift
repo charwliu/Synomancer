@@ -3,9 +3,6 @@
 //  Synomancer
 //
 //  Created by Liu Wei on 2024/9/10.
-//
-
-
 
 import SwiftUI
 
@@ -19,7 +16,7 @@ struct ModelSelectorView: View {
         Menu {
             ForEach(modelsList, id: \.self) { model in
                 Button(action: {
-                    withAnimation(.easeOut) {    
+                    withAnimation(.easeOut) {
                         onSelectModel(model)
                     }
                 }) {
@@ -62,7 +59,7 @@ struct ModelSelectorView: View {
 #Preview {
     ModelSelectorView(
         modelsList: LanguageModelSD.sample,
-        selectedModel: LanguageModelSD.sample[0], 
+        selectedModel: LanguageModelSD.sample[0],
         onSelectModel: {_ in},
         showChevron: false
     )

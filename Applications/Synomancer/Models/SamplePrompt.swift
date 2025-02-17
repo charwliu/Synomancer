@@ -8,7 +8,7 @@
 
 import Foundation
 
-struct SamplePrompts: Identifiable, Hashable {
+struct SamplePrompts: Identifiable, Hashable, Sendable {
     enum SamplePromptType {
         case question
         case action

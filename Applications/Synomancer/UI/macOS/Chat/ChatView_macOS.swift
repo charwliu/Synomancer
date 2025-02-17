@@ -157,4 +157,3 @@ struct ChatView: View {
     )
 }
 #endif
-

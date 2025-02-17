@@ -10,7 +10,7 @@
 import Foundation
 import OllamaKit
 
-class OllamaService: @unchecked Sendable {
+final class OllamaService: @unchecked Sendable {
     static let shared = OllamaService()
     
     var ollamaKit: OllamaKit
@@ -23,7 +23,6 @@ class OllamaService: @unchecked Sendable {
     func initEndpoint(url: String? = nil, bearerToken: String? = "okki") {
         let defaultUrl = "http://localhost:11434"
         let localStorageUrl = UserDefaults.standard.string(forKey: "ollamaUri")
-//        let bearerToken = UserDefaults.standard.string(forKey: "ollamaBearerToken")
         if var ollamaUrl = [localStorageUrl, defaultUrl].compactMap({$0}).filter({$0.count > 0}).first {
             if !ollamaUrl.contains("http") {
                 ollamaUrl = "http://" + ollamaUrl
@@ -51,4 +50,8 @@ class OllamaService: @unchecked Sendable {
     func reachable() async -> Bool {
         return await ollamaKit.reachable()
     }
+}
+
+extension OllamaKit: @unchecked @retroactive Sendable {
+    
 }

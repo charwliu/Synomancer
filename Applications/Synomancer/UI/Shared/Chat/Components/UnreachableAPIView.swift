@@ -5,8 +5,6 @@
 //  Created by Liu Wei on 2024/9/10.
 //
 
-
-
 import SwiftUI
 import ActivityIndicatorView
 
@@ -44,7 +42,7 @@ struct UnreachableAPIView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .padding()
        .sheet(isPresented: $showSettings) {
-           SettingsO()
+           Settings()
        }
     }
 }

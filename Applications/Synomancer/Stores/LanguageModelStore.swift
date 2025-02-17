@@ -11,8 +11,8 @@ import Foundation
 import SwiftData
 
 @Observable
-final class LanguageModelStore {
-    @MainActor static let shared = LanguageModelStore(swiftDataService: SwiftDataService.shared)
+final class LanguageModelStore: @unchecked Sendable {
+    static let shared = LanguageModelStore(swiftDataService: SwiftDataService.shared)
     
     private var swiftDataService: SwiftDataService
     @MainActor var models: [LanguageModelSD] = []
@@ -54,14 +54,15 @@ final class LanguageModelStore {
         
         let storedModels = (try? await swiftDataService.fetchModels()) ?? []
         
-        Task { @MainActor in
+        await MainActor.run {
             let remoteModelNames = remoteModels.map { $0.name }
-            self.models = storedModels.filter{remoteModelNames.contains($0.name)}
+            let models = storedModels.filter{remoteModelNames.contains($0.name)}
+            self.models = models
         }
     }
     
     func deleteAllModels() async throws {
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.models = []
         }
         try await swiftDataService.deleteModels()

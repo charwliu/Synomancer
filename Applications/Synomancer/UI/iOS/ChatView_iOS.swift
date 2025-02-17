@@ -4,7 +4,12 @@
 //
 //  Created by Liu Wei on 2024/9/10.
 //
-
+//
+//  ChatView.swift
+//  Enchanted
+//
+//  Created by Augustinas Malinauskas on 09/12/2023.
+//
 
 #if os(iOS)
 import SwiftUI

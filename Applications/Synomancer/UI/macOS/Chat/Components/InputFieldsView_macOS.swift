@@ -10,6 +10,7 @@
 #if os(macOS) || os(visionOS)
 import SwiftUI
 
+
 struct InputFieldsView: View {
     @Binding var message: String
     var conversationState: ConversationState

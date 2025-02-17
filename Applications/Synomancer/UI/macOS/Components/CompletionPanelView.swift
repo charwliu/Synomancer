@@ -227,7 +227,7 @@ struct PanelCompletionsView: View {
 
 #Preview {
     PanelCompletionsView(
-        completions: CompletionInstructionSD.samples,
+        completions: CompletionInstructionSD.sample,
         completionInWindow: {_,_  in},
         completionInApp: {_ in}
     )

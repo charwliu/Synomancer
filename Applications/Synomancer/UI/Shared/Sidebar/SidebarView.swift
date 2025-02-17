@@ -55,7 +55,7 @@ struct SidebarView: View {
         .focusedSceneValue(\.showSettings, $showSettings)
 #endif
         .sheet(isPresented: $showSettings) {
-            SettingsO()
+            Settings()
         }
 #if os(macOS)
         .sheet(isPresented: $showCompletions) {

@@ -34,8 +34,10 @@ struct CompletionsEditor: View {
         .onAppear {
             timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
                 withAnimation {
-                    accessibilityStatus = Accessibility.shared.checkAccessibility()
-                    print("accessibility", accessibilityStatus)
+                    MainActor.assumeIsolated {
+                        accessibilityStatus = Accessibility.shared.checkAccessibility()
+                        logger.info("accessibility: \(accessibilityStatus)")
+                    }
                 }
             }
         }

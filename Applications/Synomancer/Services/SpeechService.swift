@@ -11,7 +11,7 @@ import AVFoundation
 import SwiftUI
 
 
-class SpeechSynthesizerDelegate: NSObject, AVSpeechSynthesizerDelegate {
+class SpeechSynthesizerDelegate: NSObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
     var onSpeechFinished: (() -> Void)?
     var onSpeechStart: (() -> Void)?
     
@@ -28,7 +28,8 @@ class SpeechSynthesizerDelegate: NSObject, AVSpeechSynthesizerDelegate {
     }
 }
 
-@MainActor final class SpeechSynthesizer: NSObject, ObservableObject {
+@MainActor
+final class SpeechSynthesizer: NSObject, ObservableObject {
     static let shared = SpeechSynthesizer()
     private let synthesizer = AVSpeechSynthesizer()
     private let delegate = SpeechSynthesizerDelegate()

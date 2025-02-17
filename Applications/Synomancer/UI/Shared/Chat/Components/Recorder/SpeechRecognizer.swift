@@ -32,7 +32,7 @@ actor SpeechRecognizer: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     var recognizer: SFSpeechRecognizer?
-    private var onUpdate: ((String) -> ())?
+    private var onUpdate: (@Sendable @MainActor (String) -> ())?
     
     /**
      Initializes a new speech recognizer. If this is the first time you've used the class, it
@@ -79,11 +79,11 @@ actor SpeechRecognizer: ObservableObject {
         }
     }
     
-    private func setUpdateHandler(_ handler: @escaping (_ message: String) -> ()) {
+    private func setUpdateHandler(_ handler: @Sendable @MainActor @escaping (_ message: String) -> ()) {
         onUpdate = handler
     }
     
-    @MainActor func startTranscribing(onUpdate: @escaping (_ message: String) -> ()) {
+    @MainActor func startTranscribing(onUpdate: @Sendable @MainActor @escaping (_ message: String) -> ()) {
         Task {
             await self.setUpdateHandler(onUpdate)
             await transcribe()
@@ -160,6 +160,7 @@ actor SpeechRecognizer: ObservableObject {
         return (audioEngine, request)
     }
     
+    
     nonisolated private func recognitionHandler(audioEngine: AVAudioEngine, result: SFSpeechRecognitionResult?, error: Error?) {
         let receivedFinalResult = result?.isFinal ?? false
         let receivedError = error != nil
@@ -183,6 +184,7 @@ actor SpeechRecognizer: ObservableObject {
             }
         }
     }
+    
     nonisolated private func transcribe(_ error: Error) {
         var errorMessage = ""
         if let error = error as? RecognizerError {

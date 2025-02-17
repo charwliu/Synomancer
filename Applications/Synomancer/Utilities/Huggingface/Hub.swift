@@ -19,13 +19,13 @@ extension Hub {
         case httpStatusCode(Int)
     }
 
-    public enum RepoType: String {
+    public enum RepoType: String, Sendable {
         case models
         case datasets
         case spaces
     }
 
-    public struct Repo {
+    public struct Repo: Sendable {
         let id: String
         let type: RepoType
 
@@ -39,10 +39,10 @@ extension Hub {
 // MARK: - Configuration files with dynamic lookup
 
 @dynamicMemberLookup
-public struct Config {
-    public private(set) var dictionary: [String: Any]
+public struct Config : Sendable{
+    public private(set) var dictionary: [String: Sendable ]
 
-    public init(_ dictionary: [String: Any]) {
+    public init(_ dictionary: [String: Sendable]) {
         self.dictionary = dictionary
     }
 
@@ -79,7 +79,7 @@ public struct Config {
 
     public subscript(dynamicMember member: String) -> Config? {
         let key = dictionary[member] != nil ? member : uncamelCase(member)
-        if let value = dictionary[key] as? [String: Any] {
+        if let value = dictionary[key] as? [String: any (Sendable & Hashable)] {
             return Config(value)
         } else if let value = dictionary[key] {
             return Config(["value": value])
@@ -87,7 +87,7 @@ public struct Config {
         return nil
     }
 
-    public var value: Any? {
+    public var value: Sendable? {
         return dictionary["value"]
     }
 
@@ -97,15 +97,15 @@ public struct Config {
 
     // Instead of doing this we could provide custom classes and decode to them
     public var arrayValue: [Config]? {
-        guard let list = value as? [Any] else { return nil }
-        return list.map { Config($0 as! [String: Any]) }
+        guard let list = value as? [Sendable] else { return nil }
+        return list.map { Config($0 as! [String: Sendable]) }
     }
 
     /// Tuple of token identifier and string value
     public var tokenValue: (UInt, String)? { value as? (UInt, String) }
 }
 
-public class LanguageModelConfigurationFromHub {
+public class LanguageModelConfigurationFromHub  {
     struct Configurations {
         var modelConfig: Config
         var tokenizerConfig: Config?
@@ -114,15 +114,17 @@ public class LanguageModelConfigurationFromHub {
 
     private var configPromise: Task<Configurations, Error>? = nil
 
+    @MainActor
     public init(
         modelName: String,
         hubApi: HubApi = .shared
     ) {
-        self.configPromise = Task.init {
+        self.configPromise = Task {
             return try await self.loadConfig(modelName: modelName, hubApi: hubApi)
         }
     }
 
+    @MainActor
     public init(
         modelFolder: URL,
         hubApi: HubApi = .shared
@@ -132,12 +134,14 @@ public class LanguageModelConfigurationFromHub {
         }
     }
 
+    @MainActor
     public var modelConfig: Config {
         get async throws {
             try await configPromise!.value.modelConfig
         }
     }
-
+    
+    @MainActor
     public var tokenizerConfig: Config? {
         get async throws {
             if let hubConfig = try await configPromise!.value.tokenizerConfig {
@@ -170,6 +174,7 @@ public class LanguageModelConfigurationFromHub {
         }
     }
 
+    @MainActor
     public var modelType: String? {
         get async throws {
             try await modelConfig.modelType?.stringValue
@@ -215,7 +220,7 @@ public class LanguageModelConfigurationFromHub {
         do {
             let data = try Data(contentsOf: url)
             let parsed = try JSONSerialization.jsonObject(with: data, options: [])
-            guard let dictionary = parsed as? [String: Any] else { return nil }
+            guard let dictionary = parsed as? [String: Sendable] else { return nil }
             return Config(dictionary)
         } catch {
             return nil

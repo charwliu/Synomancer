@@ -14,7 +14,7 @@ enum AppState {
 }
 
 @Observable
-final class AppStore {
+final class AppStore: @unchecked Sendable {
     @MainActor static let shared = AppStore()
     
     private var cancellables = Set<AnyCancellable>()

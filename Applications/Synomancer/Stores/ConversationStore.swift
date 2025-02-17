@@ -6,7 +6,6 @@
 //
 
 
-
 import Foundation
 import SwiftData
 import OllamaKit
@@ -14,11 +13,11 @@ import Combine
 import SwiftUI
 
 @Observable
-final class ConversationStore {
-    @MainActor static let shared = ConversationStore(swiftDataService: SwiftDataService.shared)
+final class ConversationStore: @unchecked Sendable {
+    static let shared = ConversationStore(swiftDataService: SwiftDataService.shared)
     
     private var swiftDataService: SwiftDataService
-    private var generation: Task<Void, Error>?
+    private var generation: AnyCancellable?
     
     /// For some reason (SwiftUI bug / too frequent UI updates) updating UI for each stream message sometimes freezes the UI.
     /// Throttling UI updates seem to fix the issue.
@@ -47,7 +46,7 @@ final class ConversationStore {
         print("loaded conversations")
     }
     
-    func deleteAllConversations() async throws {
+    func deleteAllConversations() {
         Task {
             DispatchQueue.main.async { [weak self] in
                 self?.messages = []
@@ -60,7 +59,7 @@ final class ConversationStore {
     }
     
     func deleteDailyConversations(_ date: Date) {
-        Task { 
+        Task {
             DispatchQueue.main.async { [self] in
                 selectedConversation = nil
                 messages = []
@@ -166,19 +165,16 @@ final class ConversationStore {
             try? await loadConversations()
             
             if await OllamaService.shared.ollamaKit.reachable() {
-                self.generation = Task {
-                    do {
-                        var request = OKChatRequestData(model: model.name, messages: messageHistory)
-                        request.options = OKCompletionOptions(temperature: 0)
-                        for try await response in OllamaService.shared.ollamaKit.chat(data: request) {
-                            if Task.isCancelled { return}
-                            self.handleReceive(response)
-                        }
-                        self.handleComplete()
-                    } catch {
-                        self.handleError(error.localizedDescription)
+                var request = OKChatRequestData(model: model.name, messages: messageHistory)
+                request.options = OKCompletionOptions(temperature: 0)
+                do {
+                    for try await response in OllamaService.shared.ollamaKit.chat(data: request) {
+                        self.handleReceive(response)
                     }
+                } catch {
+                    self.handleError(error.localizedDescription)
                 }
+                self.handleComplete()
             } else {
                 self.handleError("Server unreachable")
             }
@@ -225,7 +221,6 @@ final class ConversationStore {
         Task(priority: .background) {
             try await self.swiftDataService.updateMessage(lastMesasge)
         }
-        
         withAnimation {
             conversationState = .completed
         }

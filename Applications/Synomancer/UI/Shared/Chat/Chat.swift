@@ -2,9 +2,8 @@
 //  Chat.swift
 //  Synomancer
 //
-//  Created by Liu Wei on 2024/9/10.
+//  Created by Wei LIU on 2/3/25.
 //
-
 
 
 import SwiftUI
@@ -69,7 +68,7 @@ struct Chat: View, Sendable {
     @MainActor func onStopGenerateTap() {
         conversationStore.stopGenerate()
         Task {
-            await Haptics.shared.mediumTap()
+           await Haptics.shared.mediumTap()
         }
     }
     
@@ -99,7 +98,7 @@ struct Chat: View, Sendable {
     
     func copyChat(_ json: Bool) {
         Task {
-            let messages = ConversationStore.shared.messages
+            let messages = await ConversationStore.shared.messages
             
             if messages.count == 0 {
                 return

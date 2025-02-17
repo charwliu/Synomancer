@@ -156,9 +156,10 @@ struct ChatMessageView: View {
 #Preview(traits: .sizeThatFitsLayout) {
     VStack {
         ChatMessageView(message: MessageSD.sample[0], userInitials: "AM", editMessage: .constant(nil))
-        
+            
         ChatMessageView(message: MessageSD.sample[1], userInitials: "AM", editMessage: .constant(nil))
-        
+            
         ChatMessageView(message: MessageSD(content: "```python \nprint(5+5)\n```", role: "ai"), showLoader: true, userInitials: "AM", editMessage: .constant(nil))
+            
     }
 }

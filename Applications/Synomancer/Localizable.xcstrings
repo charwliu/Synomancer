@@ -19,6 +19,7 @@
       "shouldTranslate" : false
     },
     "%lld / %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -36,6 +37,7 @@
       "shouldTranslate" : false
     },
     "%lld%%" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -44,12 +46,6 @@
           }
         }
       },
-      "shouldTranslate" : false
-    },
-    "%lldM" : {
-      "shouldTranslate" : false
-    },
-    "%lldMB" : {
       "shouldTranslate" : false
     },
     "⇧" : {
@@ -87,7 +83,7 @@
         }
       }
     },
-    "Add Item" : {
+    "Accounts" : {
 
     },
     "APP" : {
@@ -97,6 +93,7 @@
 
     },
     "Are you sure you want to delete '%@'?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -128,6 +125,7 @@
 
     },
     "Blur" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -271,6 +269,7 @@
       }
     },
     "Clear All Conversations" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -305,6 +304,7 @@
 
     },
     "Color" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -339,6 +339,7 @@
 
     },
     "Confirm Deletion" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -367,6 +368,7 @@
       }
     },
     "Conversation Title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -423,15 +425,30 @@
       }
     },
     "Copy Chat" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制对话"
+          }
+        }
+      }
     },
     "Copy Chat as JSON" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制对话为JSON"
+          }
+        }
+      }
     },
     "Create your own dynamic prompts usable anywhere on your mac with keyboard shortcuts to speed up common tasks. You can reorder, delete and edit your completions." : {
 
     },
     "Custom Endpoint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -460,6 +477,7 @@
       }
     },
     "Custom Hugging Face Endpoint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -488,6 +506,7 @@
       }
     },
     "Default Conversation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -516,6 +535,7 @@
       }
     },
     "Default conversation title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -544,7 +564,14 @@
       }
     },
     "Default Model" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认模型"
+          }
+        }
+      }
     },
     "Delete" : {
       "localizations" : {
@@ -581,7 +608,14 @@
 
     },
     "Description" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述"
+          }
+        }
+      }
     },
     "Done" : {
       "extractionState" : "manual",
@@ -644,6 +678,9 @@
     "Download voices by going to Settings > Accessibility > Spoken Content > System Voice > Manage Voices." : {
 
     },
+    "Download voices by going to Settings > Accessibility > Spoken Content > Voices." : {
+
+    },
     "Drop your image here" : {
 
     },
@@ -651,6 +688,7 @@
 
     },
     "Endpoint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -679,6 +717,7 @@
       }
     },
     "Enter Full Screen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -707,6 +746,7 @@
       }
     },
     "Enter your Hugging Face token" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -735,9 +775,17 @@
       }
     },
     "Events" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "事件"
+          }
+        }
+      }
     },
     "Exit Full Screen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -795,6 +843,7 @@
       }
     },
     "Generate Time" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -823,6 +872,7 @@
       }
     },
     "Generate Tokens/second" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -850,10 +900,8 @@
         }
       }
     },
-    "GitHub" : {
-      "shouldTranslate" : false
-    },
     "GPU Cache Limit" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -890,16 +938,11 @@
     "How can I help you today?" : {
 
     },
-    "https://hf-mirror.com" : {
-      "shouldTranslate" : false
-    },
     "https://huggingface.co" : {
       "shouldTranslate" : false
     },
-    "Hugging Face" : {
-      "shouldTranslate" : false
-    },
     "Hugging Face Endpoint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -957,6 +1000,7 @@
       }
     },
     "Hugging Face Token" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -996,16 +1040,17 @@
     "Instruction Prompt gets appended before the selected text and together sent to the LLM." : {
 
     },
-    "Item at %@" : {
-
-    },
     "Keyboard shortcut" : {
 
     },
     "Keyboard Shortcut Letter" : {
 
     },
+    "Keyboard Shortcuts" : {
+
+    },
     "Language" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1034,6 +1079,7 @@
       }
     },
     "Max Length" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1062,6 +1108,7 @@
       }
     },
     "Max Messages Limit" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1093,6 +1140,7 @@
 
     },
     "Message Control" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1149,10 +1197,8 @@
         }
       }
     },
-    "mlx-community/OpenELM-3B" : {
-      "shouldTranslate" : false
-    },
     "Model" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1181,6 +1227,7 @@
       }
     },
     "Model Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1209,6 +1256,7 @@
       }
     },
     "Model State" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1266,6 +1314,9 @@
       }
     },
     "Name" : {
+
+    },
+    "New Chat" : {
 
     },
     "New Completion" : {
@@ -1329,6 +1380,7 @@
       }
     },
     "No Conversation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1357,6 +1409,7 @@
       }
     },
     "Not selected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1435,6 +1488,7 @@
       }
     },
     "Please select a new conversation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1492,6 +1546,7 @@
       }
     },
     "Prompt Time" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1520,6 +1575,7 @@
       }
     },
     "Prompt Tokens/second" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1547,10 +1603,14 @@
         }
       }
     },
+    "Read Aloud" : {
+
+    },
     "Reading Aloud" : {
 
     },
     "Regenerate" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1579,6 +1639,7 @@
       }
     },
     "Repetition Context Size" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1607,6 +1668,7 @@
       }
     },
     "Repetition Penalty" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1635,6 +1697,7 @@
       }
     },
     "Reset All Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1672,6 +1735,7 @@
 
     },
     "Search Conversation..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1700,6 +1764,7 @@
       }
     },
     "Search..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1727,7 +1792,7 @@
         }
       }
     },
-    "Select an item" : {
+    "Select Text" : {
 
     },
     "Send" : {
@@ -1801,9 +1866,17 @@
       "extractionState" : "manual"
     },
     "System prompt" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统提示词"
+          }
+        }
+      }
     },
     "System Prompt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1832,6 +1905,7 @@
       }
     },
     "System Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1897,6 +1971,7 @@
 
     },
     "Title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1931,6 +2006,7 @@
 
     },
     "Token" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1959,6 +2035,7 @@
       }
     },
     "Top P" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1990,6 +2067,7 @@
 
     },
     "Use Custom Endpoint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2018,6 +2096,7 @@
       }
     },
     "Use Max Length" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2046,6 +2125,7 @@
       }
     },
     "Use Max Messages Limit" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2074,6 +2154,7 @@
       }
     },
     "Use Repetition Penalty" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2102,6 +2183,7 @@
       }
     },
     "Use System Prompt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2130,6 +2212,7 @@
       }
     },
     "Version %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2157,10 +2240,14 @@
         }
       }
     },
+    "Vibrations" : {
+
+    },
     "Voice" : {
 
     },
     "Warning" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -2188,7 +2275,11 @@
         }
       }
     },
+    "What is QFT?" : {
+
+    },
     "Window Appearance" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {

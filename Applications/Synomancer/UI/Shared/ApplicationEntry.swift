@@ -1,12 +1,17 @@
 //
-//  ApplicationEntry.swift
+//  ApplicationEntry 2.swift
 //  Synomancer
 //
-//  Created by Liu Wei on 2024/9/9.
+//  Created by Wei LIU on 1/31/25.
 //
 
 
-
+//
+//  ApplicationEntry.swift
+//  Enchanted
+//
+//  Created by Augustinas Malinauskas on 12/02/2024.
+//
 import SwiftUI
 import SwiftData
 
@@ -42,7 +47,7 @@ struct ApplicationEntry: View {
                 do {
                     _ = try await loadModels
                     _ = try await loadConversations
-                    _ = await loadCompletions
+                    _ = try await loadCompletions
                 } catch {
                     print("Unexpected error: \(error).")
                 }
@@ -51,4 +56,3 @@ struct ApplicationEntry: View {
         .preferredColorScheme(colorScheme.toiOSFormat)
     }
 }
-
