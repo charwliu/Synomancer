@@ -41,7 +41,7 @@ final class OllamaService: @unchecked Sendable {
             LanguageModel(
                 name: $0.name,
                 provider: .ollama,
-                imageSupport: false
+                imageSupport: $0.details.families?.contains(where: { $0 == "clip" || $0 == "mllama" }) ?? false
             )
         }
         return models

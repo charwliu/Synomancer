@@ -1,5 +1,5 @@
 {
-  "originHash" : "f11b5b7f61a019c0009dea65c4ae32a893f03c757079b2510b8a26cbc995200d",
+  "originHash" : "50484095cb93e71a24d8a693b5d544ad144a3bb4d22711e480af493c4ab1face",
   "pins" : [
     {
       "identity" : "activityindicatorview",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-argument-parser.git",
       "state" : {
-        "revision" : "41982a3656a71c768319979febd796c6fd111d5c",
-        "version" : "1.5.0"
+        "revision" : "0fbc8848e389af3bb55c182bc19ca9d5dc2f255b",
+        "version" : "1.4.0"
       }
     },
     {
@@ -168,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/huggingface/swift-transformers",
       "state" : {
-        "revision" : "8a83416cc00ab07a5de9991e6ad817a9b8588d20",
-        "version" : "0.1.15"
+        "revision" : "55710ddfb1ae804b4b7ce973be75cf2e41272185",
+        "version" : "0.1.17"
       }
     },
     {

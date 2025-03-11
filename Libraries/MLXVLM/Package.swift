@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/charwliu/mlx-swift", .upToNextMinor(from: "0.21.2")),
         .package(
-            url: "https://github.com/huggingface/swift-transformers", .upToNextMinor(from: "0.1.15")
+            url: "https://github.com/huggingface/swift-transformers", .upToNextMinor(from: "0.1.16")
         ),
         .package(path: "../MLXLMCommon"),
     ],

@@ -13,6 +13,9 @@
 		01B9AFF62CA78B0500C1712D /* Synogging in Frameworks */ = {isa = PBXBuildFile; productRef = 01B9AFF52CA78B0500C1712D /* Synogging */; };
 		01B9AFF82CA78B1200C1712D /* BeanCountParser in Frameworks */ = {isa = PBXBuildFile; productRef = 01B9AFF72CA78B1200C1712D /* BeanCountParser */; };
 		01B9AFFA2CA78C8600C1712D /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 01B9AFF92CA78C8600C1712D /* AsyncAlgorithms */; };
+		01D401332D62E64200E7E3E6 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 01D401322D62E64200E7E3E6 /* MLXLMCommon */; };
+		01D401352D62E64A00E7E3E6 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = 01D401342D62E64A00E7E3E6 /* MLXVLM */; };
+		01D401372D62E64F00E7E3E6 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 01D401362D62E64F00E7E3E6 /* MLXLLM */; };
 		01DDD72B2CAAA865004F1211 /* BeanCountTax in Frameworks */ = {isa = PBXBuildFile; productRef = 01DDD72A2CAAA865004F1211 /* BeanCountTax */; };
 		01DF0FE62C92CB2700267DCC /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF0FE52C92CB2700267DCC /* Logging */; };
 		01DF0FE92C92CB6300267DCC /* CompactSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF0FE82C92CB6300267DCC /* CompactSlider */; };
@@ -92,12 +95,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				01D401372D62E64F00E7E3E6 /* MLXLLM in Frameworks */,
 				01F1D4172C93287D00FEF65F /* WrappingHStack in Frameworks */,
 				01F1D4152C93287D00FEF65F /* Vortex in Frameworks */,
 				01DF0FEF2C92CBBB00267DCC /* Alamofire in Frameworks */,
 				01DF10622C9300D600267DCC /* SwiftUIIntrospect in Frameworks */,
+				01D401332D62E64200E7E3E6 /* MLXLMCommon in Frameworks */,
 				015164E82D4DCF83007627FD /* MLX in Frameworks */,
 				01DF0FEC2C92CB9E00267DCC /* AlertToast in Frameworks */,
+				01D401352D62E64A00E7E3E6 /* MLXVLM in Frameworks */,
 				01DDD72B2CAAA865004F1211 /* BeanCountTax in Frameworks */,
 				01DF0FE92C92CB6300267DCC /* CompactSlider in Frameworks */,
 				01F1D4132C93287D00FEF65F /* KeyboardShortcuts in Frameworks */,
@@ -205,6 +211,9 @@
 				01DDD72A2CAAA865004F1211 /* BeanCountTax */,
 				015164E72D4DCF83007627FD /* MLX */,
 				015164EA2D4DD6EE007627FD /* MarkdownUI */,
+				01D401322D62E64200E7E3E6 /* MLXLMCommon */,
+				01D401342D62E64A00E7E3E6 /* MLXVLM */,
+				01D401362D62E64F00E7E3E6 /* MLXLLM */,
 			);
 			productName = Synomancer;
 			productReference = 01198B852C92A5E600BA8CA3 /* Synomancer.app */;
@@ -249,7 +258,6 @@
 				01DF0FEA2C92CB9E00267DCC /* XCRemoteSwiftPackageReference "AlertToast" */,
 				01DF0FED2C92CBBB00267DCC /* XCRemoteSwiftPackageReference "Alamofire" */,
 				01DF10602C9300D600267DCC /* XCRemoteSwiftPackageReference "swiftui-introspect" */,
-				01DDD7392CAAAB6F004F1211 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 				015164E92D4DD582007627FD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			productRefGroup = 0169ABA92C7C249D00F166DA /* Products */;
@@ -309,10 +317,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.Synomancer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -324,7 +332,7 @@
 				SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 1.3;
+				XROS_DEPLOYMENT_TARGET = 2.0;
 			};
 			name = Debug;
 		};
@@ -355,10 +363,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.vixal.Synomancer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -370,7 +378,7 @@
 				SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 1.3;
+				XROS_DEPLOYMENT_TARGET = 2.0;
 			};
 			name = Release;
 		};
@@ -602,14 +610,6 @@
 				minimumVersion = 0.21.2;
 			};
 		};
-		01DDD7392CAAAB6F004F1211 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.5.0;
-			};
-		};
 		01DF0FE42C92CB2700267DCC /* XCRemoteSwiftPackageReference "swift-log" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-log.git";
@@ -680,6 +680,18 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0137174D2C927D3100ABDBCB /* XCRemoteSwiftPackageReference "swift-async-algorithms" */;
 			productName = AsyncAlgorithms;
+		};
+		01D401322D62E64200E7E3E6 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MLXLMCommon;
+		};
+		01D401342D62E64A00E7E3E6 /* MLXVLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MLXVLM;
+		};
+		01D401362D62E64F00E7E3E6 /* MLXLLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MLXLLM;
 		};
 		01DDD72A2CAAA865004F1211 /* BeanCountTax */ = {
 			isa = XCSwiftPackageProductDependency;

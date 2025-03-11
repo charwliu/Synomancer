@@ -22,10 +22,10 @@ public enum ModelFactoryError: Error {
 /// See also ``ModelFactory/loadContainer(hub:configuration:progressHandler:)`` and
 /// ``ModelContainer``.
 public struct ModelContext: @unchecked Sendable {
-    public let configuration: ModelConfiguration
-    public let model: any LanguageModel
-    public let processor: any UserInputProcessor
-    public let tokenizer: Tokenizer
+    public var configuration: ModelConfiguration
+    public var model: any LanguageModel
+    public var processor: any UserInputProcessor
+    public var tokenizer: Tokenizer
 
     public init(
         configuration: ModelConfiguration, model: any LanguageModel,
@@ -40,12 +40,7 @@ public struct ModelContext: @unchecked Sendable {
 
 public protocol ModelFactory: Sendable {
 
-    /// Resolve a model identifier, e.g. "mlx-community/Llama-3.2-3B-Instruct-4bit", into
-    /// a ``ModelConfiguration``.
-    ///
-    /// This will either create a new (mostly unconfigured) ``ModelConfiguration`` or
-    /// return a registered instance that matches the id.
-    func configuration(id: String) -> ModelConfiguration
+    var modelRegistry: AbstractModelRegistry { get }
 
     func _load(
         hub: HubApi, configuration: ModelConfiguration,
@@ -56,6 +51,25 @@ public protocol ModelFactory: Sendable {
         hub: HubApi, configuration: ModelConfiguration,
         progressHandler: @Sendable @escaping (Progress) -> Void
     ) async throws -> ModelContainer
+}
+
+extension ModelFactory {
+    /// Resolve a model identifier, e.g. "mlx-community/Llama-3.2-3B-Instruct-4bit", into
+    /// a ``ModelConfiguration``.
+    ///
+    /// This will either create a new (mostly unconfigured) ``ModelConfiguration`` or
+    /// return a registered instance that matches the id.
+    ///
+    /// - Note: If the id doesn't exists in the configuration, this will return a new instance of it.
+    /// If you want to check if the configuration in model registry, you should use ``contains(id:)``.
+    public func configuration(id: String) -> ModelConfiguration {
+        modelRegistry.configuration(id: id)
+    }
+    
+    /// Returns true if ``modelRegistry`` contains a model with the id. Otherwise, false.
+    public func contains(id: String) -> Bool {
+        modelRegistry.contains(id: id)
+    }
 }
 
 extension ModelFactory {

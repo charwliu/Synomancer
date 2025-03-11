@@ -32,39 +32,39 @@ import Tokenizers
 /// }
 /// ```
 public actor ModelContainer {
-    let context: ModelContext
-    nonisolated public let configuration: ModelConfiguration
-    
+    var context: ModelContext
+    public var configuration: ModelConfiguration { context.configuration }
+
     public init(context: ModelContext) {
         self.context = context
-        self.configuration = context.configuration
     }
-    
+
     /// Perform an action on the model and/or tokenizer.  Callers _must_ eval any `MLXArray` before returning as
     /// `MLXArray` is not `Sendable`.
     @available(*, deprecated, message: "prefer perform(_:) that uses a ModelContext")
     public func perform<R>(_ action: @Sendable (any LanguageModel, Tokenizer) throws -> R) rethrows
-    -> R
+        -> R
     {
         try action(context.model, context.tokenizer)
     }
-    
+
     /// Perform an action on the model and/or tokenizer with additional context values.
     /// Callers _must_ eval any `MLXArray` before returning as
     /// `MLXArray` is not `Sendable`.
     @available(*, deprecated, message: "prefer perform(values:_:) that uses a ModelContext")
-    public func perform<V, R>(
+    public func perform<V: Sendable, R: Sendable>(
         values: V, _ action: @Sendable (any LanguageModel, Tokenizer, V) throws -> R
     ) rethrows -> R {
         try action(context.model, context.tokenizer, values)
     }
-    
+
     /// Perform an action on the ``ModelContext``.  Callers _must_ eval any `MLXArray` before returning as
     /// `MLXArray` is not `Sendable`.
-    public func perform<R: Sendable>(_ action: @Sendable (ModelContext) async throws -> R) async rethrows -> R {
+    public func perform<R: Sendable>(_ action: @Sendable (ModelContext) async throws -> R) async rethrows -> R
+    {
         try await action(context)
     }
-    
+
     /// Perform an action on the ``ModelContext`` with additional context values.
     /// Callers _must_ eval any `MLXArray` before returning as
     /// `MLXArray` is not `Sendable`.
@@ -74,4 +74,9 @@ public actor ModelContainer {
         try await action(context, values)
     }
     
+    /// Update the owned `ModelContext`.
+    /// - Parameter action: update action
+    public func update(_ action: @Sendable (inout ModelContext) -> Void) {
+        action(&context)
+    }
 }

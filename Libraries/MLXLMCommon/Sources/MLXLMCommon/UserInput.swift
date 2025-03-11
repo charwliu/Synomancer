@@ -1,21 +1,25 @@
 // Copyright © 2024 Apple Inc.
 
+@preconcurrency import AVFoundation
 @preconcurrency import CoreImage
 import Foundation
 @preconcurrency import MLX
+import Tokenizers
+
+
+public typealias Message = [String: Any]
 
 /// Container for raw user input.
 ///
 /// A ``UserInputProcessor`` can convert this to ``LMInput``.
 /// See also ``ModelContext``.
-public struct UserInput: Sendable {
-
+public struct UserInput: @unchecked Sendable {
     /// Representation of a prompt or series of messages (conversation).
-    public enum Prompt: Sendable, CustomStringConvertible {
+    public enum Prompt: @unchecked Sendable, CustomStringConvertible {
         case text(String)
-        case messages([[String: String]])
+        case messages([Message])
 
-        public func asMessages() -> [[String: String]] {
+        public func asMessages() -> [Message] {
             switch self {
             case .text(let text):
                 return [["role": "user", "content": text]]
@@ -30,6 +34,20 @@ public struct UserInput: Sendable {
                 return text
             case .messages(let messages):
                 return messages.map { $0.description }.joined(separator: "\n")
+            }
+        }
+    }
+
+    public enum Video: Sendable {
+        case avAsset(AVAsset)
+        case url(URL)
+
+        public func asAVAsset() -> AVAsset {
+            switch self {
+            case .avAsset(let asset):
+                return asset
+            case .url(let url):
+                return AVURLAsset(url: url)
             }
         }
     }
@@ -83,11 +101,10 @@ public struct UserInput: Sendable {
                 default:
                     throw UserInputError.arrayError(
                         "channel dimension must be last and 3/4: \(array.shape)")
-                    break
                 }
 
                 let arrayData = array.asData()
-                let (H, W, C) = array.shape3
+                let (H, W, _) = array.shape3
                 let cs = CGColorSpace(name: CGColorSpace.sRGB)!
 
                 return CIImage(
@@ -109,22 +126,45 @@ public struct UserInput: Sendable {
 
     public var prompt: Prompt
     public var images = [Image]()
+    public var videos = [Video]()
+    public var tools: [ToolSpec]?
+    /// Additional values provided for the chat template rendering context
+    public var additionalContext: [String: Any]?
     public var processing: Processing = .init()
 
-    public init(prompt: String, images: [Image] = [Image]()) {
+    public init(
+        prompt: String, images: [Image] = [Image](), videos: [Video] = [Video](),
+        tools: [ToolSpec]? = nil,
+        additionalContext: [String: Any]? = nil
+    ) {
         self.prompt = .text(prompt)
         self.images = images
+        self.videos = videos
+        self.tools = tools
+        self.additionalContext = additionalContext
     }
 
-    public init(messages: [[String: String]], images: [Image] = [Image]()) {
+    public init(
+        messages: [Message], images: [Image] = [Image](), videos: [Video] = [Video](),
+        tools: [ToolSpec]? = nil,
+        additionalContext: [String: Any]? = nil
+    ) {
         self.prompt = .messages(messages)
         self.images = images
+        self.videos = videos
+        self.tools = tools
+        self.additionalContext = additionalContext
     }
 
-    public init(prompt: Prompt, images: [Image] = [Image](), processing: Processing = .init()) {
+    public init(
+        prompt: Prompt, images: [Image] = [Image](), processing: Processing = .init(),
+        tools: [ToolSpec]? = nil, additionalContext: [String: Any]? = nil
+    ) {
         self.prompt = prompt
         self.images = images
         self.processing = processing
+        self.tools = tools
+        self.additionalContext = additionalContext
     }
 }
 
