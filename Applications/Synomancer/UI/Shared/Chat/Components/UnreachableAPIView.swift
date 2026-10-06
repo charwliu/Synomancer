@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import ActivityIndicatorView
 
 struct UnreachableAPIView: View {
     @State var showSettings = false
@@ -23,7 +22,7 @@ struct UnreachableAPIView: View {
             
             Spacer()
             
-            ActivityIndicatorView(isVisible: .constant(true), type: .growingCircle)
+            ProgressView().controlSize(.small)
                  .frame(width: 21, height: 21)
                  .padding(.horizontal)
             

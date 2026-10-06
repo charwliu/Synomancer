@@ -51,7 +51,3 @@ final class OllamaService: @unchecked Sendable {
         return await ollamaKit.reachable()
     }
 }
-
-extension OllamaKit: @unchecked @retroactive Sendable {
-    
-}

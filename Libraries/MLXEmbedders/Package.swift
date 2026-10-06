@@ -17,8 +17,8 @@ let package = Package(
             targets: ["MLXEmbedders"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/charwliu/mlx-swift", .upToNextMinor(from: "0.21.2")),
-        .package(url: "https://github.com/huggingface/swift-transformers", .upToNextMinor(from: "0.1.16")),
+        .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMinor(from: "0.32.3")),
+        .package(url: "https://github.com/huggingface/swift-transformers", .upToNextMinor(from: "1.3.4")),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

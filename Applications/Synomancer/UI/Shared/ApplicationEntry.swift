@@ -39,15 +39,14 @@ struct ApplicationEntry: View {
                 print("Bundle Identifier not found.")
             }
             
-            Task.detached {
+            completionsStore.load()
+            Task {
                 async let loadModels: () = languageModelStore.loadModels()
                 async let loadConversations: () = conversationStore.loadConversations()
-                async let loadCompletions: () = completionsStore.load()
                 
                 do {
                     _ = try await loadModels
                     _ = try await loadConversations
-                    _ = try await loadCompletions
                 } catch {
                     print("Unexpected error: \(error).")
                 }

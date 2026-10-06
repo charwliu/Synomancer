@@ -9,3 +9,4 @@ DerivedData/
 /Libraries/.build
 /Libraries/.conved
 /Libraries/.swiftpm
+/Libraries/*/.swiftpm/

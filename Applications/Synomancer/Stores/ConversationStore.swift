@@ -12,8 +12,8 @@ import OllamaKit
 import Combine
 import SwiftUI
 
-@Observable
-final class ConversationStore: @unchecked Sendable {
+@Observable @MainActor
+final class ConversationStore {
     static let shared = ConversationStore(swiftDataService: SwiftDataService.shared)
     
     private var swiftDataService: SwiftDataService
@@ -39,7 +39,7 @@ final class ConversationStore: @unchecked Sendable {
     
     func loadConversations() async throws {
         print("loading conversations")
-        let fetchedConversations = try await swiftDataService.fetchConversations()
+        let fetchedConversations = try swiftDataService.fetchConversations()
         DispatchQueue.main.async {
             self.conversations = fetchedConversations
         }
@@ -47,13 +47,14 @@ final class ConversationStore: @unchecked Sendable {
     }
     
     func deleteAllConversations() {
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             DispatchQueue.main.async { [weak self] in
                 self?.messages = []
                 self?.selectedConversation = nil
             }
-            try? await swiftDataService.deleteConversations()
-            try? await swiftDataService.deleteMessages()
+            try? swiftDataService.deleteConversations()
+            try? swiftDataService.deleteMessages()
             try? await loadConversations()
         }
     }
@@ -64,18 +65,18 @@ final class ConversationStore: @unchecked Sendable {
                 selectedConversation = nil
                 messages = []
             }
-            try? await swiftDataService.deleteConversations()
+            try? swiftDataService.deleteConversations()
             try? await loadConversations()
         }
     }
     
     
     func create(_ conversation: ConversationSD) async throws {
-        try await swiftDataService.createConversation(conversation)
+        try swiftDataService.createConversation(conversation)
     }
     
     func reloadConversation(_ conversation: ConversationSD) async throws {
-        let (messages, selectedConversation) = try await (
+        let (messages, selectedConversation) = try (
             swiftDataService.fetchMessages(conversation.id),
             swiftDataService.getConversation(conversation.id)
         )
@@ -91,8 +92,8 @@ final class ConversationStore: @unchecked Sendable {
     }
     
     func delete(_ conversation: ConversationSD) async throws {
-        try await swiftDataService.deleteConversation(conversation)
-        let fetchedConversations = try await swiftDataService.fetchConversations()
+        try swiftDataService.deleteConversation(conversation)
+        let fetchedConversations = try swiftDataService.fetchConversations()
         DispatchQueue.main.async {
             self.selectedConversation = nil
             self.conversations = fetchedConversations
@@ -158,25 +159,29 @@ final class ConversationStore: @unchecked Sendable {
         conversationState = .loading
         
         Task {
-            try await swiftDataService.updateConversation(conversation)
-            try await swiftDataService.createMessage(userMessage)
-            try await swiftDataService.createMessage(assistantMessage)
-            try await reloadConversation(conversation)
-            try? await loadConversations()
+            do {
+                try swiftDataService.updateConversation(conversation)
+                try swiftDataService.createMessage(userMessage)
+                try swiftDataService.createMessage(assistantMessage)
+                try await reloadConversation(conversation)
+                try? await loadConversations()
             
-            if await OllamaService.shared.ollamaKit.reachable() {
-                var request = OKChatRequestData(model: model.name, messages: messageHistory)
-                request.options = OKCompletionOptions(temperature: 0)
-                do {
-                    for try await response in OllamaService.shared.ollamaKit.chat(data: request) {
-                        self.handleReceive(response)
+                if await OllamaService.shared.ollamaKit.reachable() {
+                    var request = OKChatRequestData(model: model.name, messages: messageHistory)
+                    request.options = OKCompletionOptions(temperature: 0)
+                    do {
+                        for try await response in OllamaService.shared.ollamaKit.chat(data: request) {
+                            self.handleReceive(response)
+                        }
+                    } catch {
+                        self.handleError(error.localizedDescription)
                     }
-                } catch {
-                    self.handleError(error.localizedDescription)
+                    self.handleComplete()
+                } else {
+                    self.handleError("Server unreachable")
                 }
-                self.handleComplete()
-            } else {
-                self.handleError("Server unreachable")
+            } catch {
+                self.handleError(error.localizedDescription)
             }
         }
     }
@@ -204,7 +209,7 @@ final class ConversationStore: @unchecked Sendable {
         lastMesasge.done = false
         
         Task(priority: .background) {
-            try? await swiftDataService.updateMessage(lastMesasge)
+            try? swiftDataService.updateMessage(lastMesasge)
         }
         
         withAnimation {
@@ -219,7 +224,11 @@ final class ConversationStore: @unchecked Sendable {
         lastMesasge.done = true
         
         Task(priority: .background) {
-            try await self.swiftDataService.updateMessage(lastMesasge)
+            do {
+                try self.swiftDataService.updateMessage(lastMesasge)
+            } catch {
+                self.handleError(error.localizedDescription)
+            }
         }
         withAnimation {
             conversationState = .completed

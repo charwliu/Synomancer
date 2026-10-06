@@ -7,13 +7,8 @@
 
 import SwiftUI
 import SwiftData
+import AppIntents
 
-#if os(macOS)
-import KeyboardShortcuts
-extension KeyboardShortcuts.Name {
-    static let togglePanelMode = Self("togglePanelMode1", default: .init(.k, modifiers: [.command, .option]))
-}
-#endif
 
 
 @main
@@ -27,9 +22,8 @@ struct SynomancerApp: App {
         WindowGroup {
             ApplicationEntry()
 #if os(macOS)
-                .onKeyboardShortcut(KeyboardShortcuts.Name.togglePanelMode, type: .keyDown) {
-                    print("heya")
-                    panelManager.togglePanel()
+                .onAppear {
+                    PanelShortcut.shared.activate { panelManager.togglePanel() }
                 }
                 .onAppear {
                     NSWindow.allowsAutomaticWindowTabbing = false

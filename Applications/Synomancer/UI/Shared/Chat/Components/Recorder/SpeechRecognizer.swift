@@ -151,8 +151,16 @@ actor SpeechRecognizer: ObservableObject {
         let inputNode = audioEngine.inputNode
         
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
+        let appendBuffer: AVAudioNodeTapBlock = { buffer, _ in
             request.append(buffer)
+        }
+        if #available(macOS 27, iOS 27, visionOS 27, *) {
+            // Use the throwing legacy-buffer overload, preserving Speech buffer ownership.
+            try inputNode.__installTap(
+                onBus: 0, bufferSize: 1024, format: recordingFormat,
+                error: (), block: appendBuffer)
+        } else {
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat, block: appendBuffer)
         }
         audioEngine.prepare()
         try audioEngine.start()

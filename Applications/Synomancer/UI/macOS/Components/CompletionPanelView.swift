@@ -8,7 +8,6 @@
 
 #if os(macOS)
 import SwiftUI
-import WrappingHStack
 
 enum CompletionsPromptMode {
     case completionsInCurrentWindow
@@ -157,7 +156,7 @@ struct PanelCompletionsView: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                WrappingHStack(alignment: .leading) {
+                FlowLayout() {
                     ForEach(filetedCompletions) { completion in
                         CompletionButtonView(
                             name: completion.name,

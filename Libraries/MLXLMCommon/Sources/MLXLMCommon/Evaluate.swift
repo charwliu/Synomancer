@@ -108,12 +108,12 @@ public struct ArgMaxSampler: LogitSampler {
 
 /// Sampler that uses `topP` and `temperature` to sample the logits.
 public struct TopPSampler: LogitSampler {
-    let temp: MLXArray
-    let topP: MLXArray
+    let temp: Float
+    let topP: Float
 
     init(temperature: Float, topP: Float) {
-        self.temp = MLXArray(temperature)
-        self.topP = MLXArray(topP)
+        self.temp = temperature
+        self.topP = topP
     }
 
     private let compiledTopPSampling: @Sendable (MLXArray, MLXArray, MLXArray) -> MLXArray = {
@@ -141,16 +141,16 @@ public struct TopPSampler: LogitSampler {
             logits = logits.asType(.float32)
         }
 
-        return compiledTopPSampling(logits, topP, temp)
+        return compiledTopPSampling(logits, MLXArray(topP), MLXArray(temp))
     }
 }
 
 /// Processor that uses `temperature` to sample the logits
 public struct CategoricalSampler: LogitSampler {
-    let temp: MLXArray
+    let temp: Float
 
     init(temperature: Float) {
-        self.temp = MLXArray(temperature)
+        self.temp = temperature
     }
 
     private let compiledCategorical: @Sendable (MLXArray, MLXArray) -> MLXArray = {
@@ -160,7 +160,7 @@ public struct CategoricalSampler: LogitSampler {
     }()
 
     public func sample(logits: MLXArray) -> MLXArray {
-        compiledCategorical(logits, temp)
+        compiledCategorical(logits, MLXArray(temp))
     }
 }
 
@@ -532,7 +532,7 @@ public func generate(
     var promptTime: TimeInterval = 0
 
     let additionalEOSTokenIds = Set(
-        (context.configuration.extraEOSTokens ?? [])
+        context.configuration.extraEOSTokens
             .compactMap {
                 context.tokenizer.convertTokenToId($0)
             })
@@ -566,7 +566,8 @@ public func generate(
     // exits the program right away, those tasks will still be executing and will
     // hit assertions as the mlx scheduler is torn down.  Synchronize with the stream
     // to make sure it is complete.
-    Stream().synchronize()
+    Stream.defaultStream(.gpu).synchronize()
+    Stream.defaultStream(.cpu).synchronize()
 
     return GenerateResult(
         inputText: input.text, tokens: tokens,

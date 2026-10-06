@@ -8,7 +8,6 @@ import SwiftUI
 
 public extension EnvironmentValues {
     @Entry var tintColor: Color = .accentColor
-    @Entry var hoveringOverLuminareItem: Bool = false
     @Entry var clickedOutsideFlag: Bool = false
     @Entry var currentlyScrolling: Bool  = false
 }

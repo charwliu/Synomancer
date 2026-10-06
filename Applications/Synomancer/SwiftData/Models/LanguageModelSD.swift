@@ -64,14 +64,10 @@ extension LanguageModelSD {
         return false
     }
     
-    static let sample: [LanguageModelSD] = [
-        .init(name: "Llama:latest", modelProvider: .ollama),
-        .init(name: "Mistral:latest", modelProvider: .ollama)
-    ]
-}
-
-
-// MARK: - @unchecked Sendable
-extension LanguageModelSD: @unchecked Sendable {
-    /// We hide compiler warnings for concurency. We have to make sure to modify the data only via SwiftDataManager to ensure concurrent operations.
+    static var sample: [LanguageModelSD] {
+        [
+            .init(name: "Llama:latest", modelProvider: .ollama),
+            .init(name: "Mistral:latest", modelProvider: .ollama)
+        ]
+    }
 }

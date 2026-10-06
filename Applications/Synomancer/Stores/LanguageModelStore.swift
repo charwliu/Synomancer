@@ -10,8 +10,8 @@
 import Foundation
 import SwiftData
 
-@Observable
-final class LanguageModelStore: @unchecked Sendable {
+@Observable @MainActor
+final class LanguageModelStore {
     static let shared = LanguageModelStore(swiftDataService: SwiftDataService.shared)
     
     private var swiftDataService: SwiftDataService
@@ -50,9 +50,9 @@ final class LanguageModelStore: @unchecked Sendable {
     
     func loadModels() async throws {
         let remoteModels = try await OllamaService.shared.getModels()
-        try await swiftDataService.saveModels(models: remoteModels.map{LanguageModelSD(name: $0.name, imageSupport: $0.imageSupport, modelProvider: .ollama)})
+        try swiftDataService.saveModels(models: remoteModels.map{LanguageModelSD(name: $0.name, imageSupport: $0.imageSupport, modelProvider: .ollama)})
         
-        let storedModels = (try? await swiftDataService.fetchModels()) ?? []
+        let storedModels = (try? swiftDataService.fetchModels()) ?? []
         
         await MainActor.run {
             let remoteModelNames = remoteModels.map { $0.name }
@@ -65,6 +65,6 @@ final class LanguageModelStore: @unchecked Sendable {
         await MainActor.run {
             self.models = []
         }
-        try await swiftDataService.deleteModels()
+        try swiftDataService.deleteModels()
     }
 }

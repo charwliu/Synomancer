@@ -53,7 +53,7 @@ extension HubApi {
     }
 
     /// Throws error if the response code is not 20X
-    public func httpGet(for url: URL) async throws -> (Data, HTTPURLResponse) {
+    nonisolated(nonsending) public func httpGet(for url: URL) async throws -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: url)
         if let hfToken = hfToken {
             request.setValue("Bearer \(hfToken)", forHTTPHeaderField: "Authorization")
@@ -72,7 +72,7 @@ extension HubApi {
         return (data, response)
     }
 
-    public func getFilenames(from repo: Repo, matching globs: [String] = []) async throws
+    nonisolated(nonsending) public func getFilenames(from repo: Repo, matching globs: [String] = []) async throws
         -> [String]
     {
         // Read repo info and only parse "siblings"
@@ -89,17 +89,17 @@ extension HubApi {
         return Array(selected)
     }
 
-    public func getFilenames(from repoId: String, matching globs: [String] = []) async throws
+    nonisolated(nonsending) public func getFilenames(from repoId: String, matching globs: [String] = []) async throws
         -> [String]
     {
         return try await getFilenames(from: Repo(id: repoId), matching: globs)
     }
 
-    public func getFilenames(from repo: Repo, matching glob: String) async throws -> [String] {
+    nonisolated(nonsending) public func getFilenames(from repo: Repo, matching glob: String) async throws -> [String] {
         return try await getFilenames(from: repo, matching: [glob])
     }
 
-    public func getFilenames(from repoId: String, matching glob: String) async throws -> [String] {
+    nonisolated(nonsending) public func getFilenames(from repoId: String, matching glob: String) async throws -> [String] {
         return try await getFilenames(from: Repo(id: repoId), matching: [glob])
     }
 }
@@ -125,7 +125,7 @@ extension HubApi {
 
 /// Whoami
 extension HubApi {
-    public func whoami() async throws -> Config {
+    nonisolated(nonsending) public func whoami() async throws -> Config {
         guard hfToken != nil else { throw Hub.HubClientError.authorizationRequired }
 
         let url = URL(string: "\(endpoint)/api/whoami-v2")!
@@ -208,7 +208,7 @@ extension HubApi {
     }
     
     @discardableResult
-    public func snapshot(
+    nonisolated(nonsending) public func snapshot(
         from repo: sending Repo, matching globs: sending [String] = [],
         progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
@@ -248,7 +248,7 @@ extension HubApi {
 
 
     @discardableResult
-    public func snapshot(
+    nonisolated(nonsending) public func snapshot(
         from repoId: String, matching globs: [String] = [],
         progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
@@ -257,7 +257,7 @@ extension HubApi {
     }
 
     @discardableResult
-    public func snapshot(
+    nonisolated(nonsending) public func snapshot(
         from repo: Repo, matching glob: String,
         progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {
@@ -265,7 +265,7 @@ extension HubApi {
     }
 
     @discardableResult
-    public func snapshot(
+    nonisolated(nonsending) public func snapshot(
         from repoId: String, matching glob: String,
         progressHandler: @escaping @Sendable (Progress) -> Void = { _ in }
     ) async throws -> URL {

@@ -7,7 +7,7 @@ import Foundation
 import Tokenizers
 
 
-public typealias Message = [String: Any]
+public typealias Message = Tokenizers.Message
 
 /// Container for raw user input.
 ///
@@ -53,7 +53,7 @@ public struct UserInput: @unchecked Sendable {
     }
 
     /// Representation of a single image.
-    public enum Image: Sendable {
+    public enum Image {
         case ciImage(CIImage)
         case url(URL)
         case array(MLXArray)
@@ -129,13 +129,13 @@ public struct UserInput: @unchecked Sendable {
     public var videos = [Video]()
     public var tools: [ToolSpec]?
     /// Additional values provided for the chat template rendering context
-    public var additionalContext: [String: Any]?
+    public var additionalContext: [String: any Sendable]?
     public var processing: Processing = .init()
 
     public init(
         prompt: String, images: [Image] = [Image](), videos: [Video] = [Video](),
         tools: [ToolSpec]? = nil,
-        additionalContext: [String: Any]? = nil
+        additionalContext: [String: any Sendable]? = nil
     ) {
         self.prompt = .text(prompt)
         self.images = images
@@ -147,7 +147,7 @@ public struct UserInput: @unchecked Sendable {
     public init(
         messages: [Message], images: [Image] = [Image](), videos: [Video] = [Video](),
         tools: [ToolSpec]? = nil,
-        additionalContext: [String: Any]? = nil
+        additionalContext: [String: any Sendable]? = nil
     ) {
         self.prompt = .messages(messages)
         self.images = images
@@ -158,7 +158,7 @@ public struct UserInput: @unchecked Sendable {
 
     public init(
         prompt: Prompt, images: [Image] = [Image](), processing: Processing = .init(),
-        tools: [ToolSpec]? = nil, additionalContext: [String: Any]? = nil
+        tools: [ToolSpec]? = nil, additionalContext: [String: any Sendable]? = nil
     ) {
         self.prompt = prompt
         self.images = images

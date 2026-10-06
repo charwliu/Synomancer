@@ -527,7 +527,6 @@ private enum Vision {
             var hiddenStates = patchEmbed(hiddenStates)
             let rotaryPositionEmbedding = rotaryPositionEmbedding(frames)
 
-            let batchSize = frames.count
 
             for block in blocks {
                 hiddenStates = block(
@@ -640,7 +639,7 @@ public class Qwen2VLProcessor: UserInputProcessor {
         let resizedSize = CGSize(width: resizedWidth, height: resizedHeight)
 
         let processedImages =
-            try images
+            images
             .map {
                 MediaProcessing.inSRGBToneCurveSpace($0)
             }
@@ -748,7 +747,7 @@ public class Qwen2VLProcessor: UserInputProcessor {
         throws -> [Int]
     {
         // Replace single padding token with correct number for each image or video frame
-        let placeholderTokens = try tokenizer.encode(
+        let placeholderTokens = tokenizer.encode(
             text: "<|vision_start|>\(paddingToken)<|vision_end|>")
         let placeholderRanges = promptTokens.ranges(of: placeholderTokens)
         guard placeholderRanges.count == frames.count else {
@@ -756,9 +755,9 @@ public class Qwen2VLProcessor: UserInputProcessor {
                 "Number of placeholder tokens does not match number of frames")
         }
         let mergeLength = config.mergeSize * config.mergeSize
-        let replacementSequences = try frames.map { frame in
+        let replacementSequences = frames.map { frame in
             let paddingCount = frame.product / mergeLength
-            return try tokenizer.encode(
+            return tokenizer.encode(
                 text:
                     "<|vision_start|>\(Array(repeating: paddingToken, count: paddingCount).joined())<|vision_end|>"
             )

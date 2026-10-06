@@ -38,15 +38,12 @@ final class MessageSD: Identifiable {
 }
 
 extension MessageSD {
-    static let sample: [MessageSD] = [
-        .init(content: "How many quarks there are in SM?", role: "user"),
-        .init(content: "There are 6 quarks in SM, each of them has an antiparticle and colour.", role: "assistant"),
-        .init(content: "How elementary particle is defined in mathematics?", role: "user"),
-        .init(content: "Elementary particle is defined as an irreducible representation of the poincase group.", role: "assistant")
-    ]
-}
-
-// MARK: - @unchecked Sendable
-extension MessageSD: @unchecked Sendable {
-    /// We hide compiler warnings for concurency. We have to make sure to modify the data only via SwiftDataManager to ensure concurrent operations.
+    static var sample: [MessageSD] {
+        [
+            .init(content: "How many quarks there are in SM?", role: "user"),
+            .init(content: "There are 6 quarks in SM, each of them has an antiparticle and colour.", role: "assistant"),
+            .init(content: "How elementary particle is defined in mathematics?", role: "user"),
+            .init(content: "Elementary particle is defined as an irreducible representation of the poincase group.", role: "assistant")
+        ]
+    }
 }

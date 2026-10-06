@@ -41,7 +41,7 @@ final class AppStore: @unchecked Sendable {
     }
     
     private func startCheckingReachability(interval: TimeInterval = 5) {
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { [weak self] in
                 let status = await self?.reachable() ?? false
                 self?.updateReachable(status)

@@ -33,16 +33,12 @@ final class CompletionInstructionSD: Identifiable {
 
 // MARK: - Sample data
 extension CompletionInstructionSD {
-    static let sample: [CompletionInstructionSD] = [
-        .init(name: "Fix Grammar", keyboardCharacterStr: "f", instruction: "Fix grammar for the text below", order: 1),
-        .init(name: "Summarize", keyboardCharacterStr: "s", instruction: "Summarize the following text, focusing strictly on the key facts and core arguments. Exclude any model-generated politeness or introductory phrases. Provide a direct, concise summary in bulletpoints.", order: 2),
-        .init(name: "Write More", keyboardCharacterStr: "w", instruction: "Elaborate on the following content, providing additional insights, examples, detailed explanations, and related concepts. Dive deeper into the topic to offer a comprehensive understanding and explore various dimensions not covered in the original text.", order: 3),
-        .init(name: "Politely Decline", keyboardCharacterStr: "d", instruction: "Write a response politely declining the offer below", order: 4)
-    ]
-}
-
-
-// MARK: - @unchecked Sendable
-extension CompletionInstructionSD: @unchecked Sendable {
-    /// We hide compiler warnings for concurency. We have to make sure to modify the data only via SwiftDataManager to ensure concurrent operations.
+    static var sample: [CompletionInstructionSD] {
+        [
+            .init(name: "Fix Grammar", keyboardCharacterStr: "f", instruction: "Fix grammar for the text below", order: 1),
+            .init(name: "Summarize", keyboardCharacterStr: "s", instruction: "Summarize the following text, focusing strictly on the key facts and core arguments. Exclude any model-generated politeness or introductory phrases. Provide a direct, concise summary in bulletpoints.", order: 2),
+            .init(name: "Write More", keyboardCharacterStr: "w", instruction: "Elaborate on the following content, providing additional insights, examples, detailed explanations, and related concepts. Dive deeper into the topic to offer a comprehensive understanding and explore various dimensions not covered in the original text.", order: 3),
+            .init(name: "Politely Decline", keyboardCharacterStr: "d", instruction: "Write a response politely declining the offer below", order: 4)
+        ]
+    }
 }

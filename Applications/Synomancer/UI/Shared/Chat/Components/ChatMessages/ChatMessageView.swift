@@ -8,9 +8,6 @@
 
 
 import SwiftUI
-import MarkdownUI
-import ActivityIndicatorView
-import Splash
 
 struct ChatMessageView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -31,15 +28,6 @@ struct ChatMessageView: View {
         message.image != nil ? Image(data: message.image!) : nil
     }
     
-    private var codeHighlightColorScheme: Splash.Theme {
-        switch colorScheme {
-        case .dark:
-            return .wwdc17(withFont: .init(size: 16))
-        default:
-            return .sunset(withFont: .init(size: 16))
-        }
-    }
-    
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
@@ -48,9 +36,8 @@ struct ChatMessageView: View {
                         Spacer()
                     } else {
                         if showLoader {
-                            ActivityIndicatorView(isVisible: .constant(true), type: .rotatingDots(count: 5))
+                            ProgressView().controlSize(.small)
                                 .frame(width: 24, height: 24)
-                                .rotationEffect(.degrees(90))
                         } else {
                             Image("logo-nobg")
                                 .resizable()
@@ -62,12 +49,10 @@ struct ChatMessageView: View {
                 .offset(CGSize(width: 0, height: 6))
                 
                 VStack(alignment: .leading) {
-                    Markdown(message.content)
+                    NativeMarkdownView(content: message.content)
 #if os(macOS)
                         .textSelection(.enabled)
 #endif
-                        .markdownCodeSyntaxHighlighter(.splash(theme: codeHighlightColorScheme))
-                        .markdownTheme(MarkdownColours.synomancerTheme)
                     
                     if let uiImage = image {
                         uiImage

@@ -7,9 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		01198C1D2C92B04600BA8CA3 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 01198C1C2C92B04600BA8CA3 /* Splash */; };
 		015164E82D4DCF83007627FD /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 015164E72D4DCF83007627FD /* MLX */; };
-		015164EB2D4DD6EE007627FD /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 015164EA2D4DD6EE007627FD /* MarkdownUI */; };
 		01B9AFF62CA78B0500C1712D /* Synogging in Frameworks */ = {isa = PBXBuildFile; productRef = 01B9AFF52CA78B0500C1712D /* Synogging */; };
 		01B9AFF82CA78B1200C1712D /* BeanCountParser in Frameworks */ = {isa = PBXBuildFile; productRef = 01B9AFF72CA78B1200C1712D /* BeanCountParser */; };
 		01B9AFFA2CA78C8600C1712D /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 01B9AFF92CA78C8600C1712D /* AsyncAlgorithms */; };
@@ -18,15 +16,8 @@
 		01D401372D62E64F00E7E3E6 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 01D401362D62E64F00E7E3E6 /* MLXLLM */; };
 		01DDD72B2CAAA865004F1211 /* BeanCountTax in Frameworks */ = {isa = PBXBuildFile; productRef = 01DDD72A2CAAA865004F1211 /* BeanCountTax */; };
 		01DF0FE62C92CB2700267DCC /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF0FE52C92CB2700267DCC /* Logging */; };
-		01DF0FE92C92CB6300267DCC /* CompactSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF0FE82C92CB6300267DCC /* CompactSlider */; };
-		01DF0FEC2C92CB9E00267DCC /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF0FEB2C92CB9E00267DCC /* AlertToast */; };
 		01DF0FEF2C92CBBB00267DCC /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF0FEE2C92CBBB00267DCC /* Alamofire */; };
-		01DF10622C9300D600267DCC /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 01DF10612C9300D600267DCC /* SwiftUIIntrospect */; };
-		01F1D4132C93287D00FEF65F /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 01F1D4122C93287D00FEF65F /* KeyboardShortcuts */; };
-		01F1D4152C93287D00FEF65F /* Vortex in Frameworks */ = {isa = PBXBuildFile; productRef = 01F1D4142C93287D00FEF65F /* Vortex */; };
-		01F1D4172C93287D00FEF65F /* WrappingHStack in Frameworks */ = {isa = PBXBuildFile; productRef = 01F1D4162C93287D00FEF65F /* WrappingHStack */; };
 		01F1D42B2C932ED400FEF65F /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 01F1D42A2C932ED400FEF65F /* OllamaKit */; };
-		01F1D4802C9330A200FEF65F /* ActivityIndicatorView in Frameworks */ = {isa = PBXBuildFile; productRef = 01F1D47F2C9330A200FEF65F /* ActivityIndicatorView */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -44,18 +35,7 @@
 
 /* Begin PBXFileReference section */
 		01198B852C92A5E600BA8CA3 /* Synomancer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Synomancer.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		0129DCBF2D51521D001C4AE9 /* MLXVLM */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = MLXVLM; sourceTree = "<group>"; };
-		0129DCC02D5155A9001C4AE9 /* StableDiffusion */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = StableDiffusion; sourceTree = "<group>"; };
-		015164EE2D4DD8A8007627FD /* MLXLMCommon */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = MLXLMCommon; path = Libraries/MLXLMCommon; sourceTree = SOURCE_ROOT; };
-		015167612D5149EC007627FD /* MLXLLM */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = MLXLLM; sourceTree = "<group>"; };
-		0174BF2B2D62BC4B001A5828 /* MLXEmbedders */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = MLXEmbedders; sourceTree = "<group>"; };
-		017FAE872CA54B4A00F9B5B0 /* BeanCountModel */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BeanCountModel; sourceTree = "<group>"; };
-		017FAE882CA643AB00F9B5B0 /* BeanCountParser */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BeanCountParser; sourceTree = "<group>"; };
-		017FAE892CA6454100F9B5B0 /* BeanCountParserUtils */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BeanCountParserUtils; sourceTree = "<group>"; };
-		017FB1C42CA788EC00F9B5B0 /* Synogging */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Synogging; sourceTree = "<group>"; };
 		01B9B00A2CAA46A900C1712D /* Synomancer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Synomancer-Info.plist"; sourceTree = "<group>"; };
-		01DDD7272CAA5212004F1211 /* BeanCountTax */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BeanCountTax; sourceTree = "<group>"; };
-		01DDD73C2CAAAC79004F1211 /* BeanCountCLI */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BeanCountCLI; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -96,22 +76,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				01D401372D62E64F00E7E3E6 /* MLXLLM in Frameworks */,
-				01F1D4172C93287D00FEF65F /* WrappingHStack in Frameworks */,
-				01F1D4152C93287D00FEF65F /* Vortex in Frameworks */,
 				01DF0FEF2C92CBBB00267DCC /* Alamofire in Frameworks */,
-				01DF10622C9300D600267DCC /* SwiftUIIntrospect in Frameworks */,
 				01D401332D62E64200E7E3E6 /* MLXLMCommon in Frameworks */,
 				015164E82D4DCF83007627FD /* MLX in Frameworks */,
-				01DF0FEC2C92CB9E00267DCC /* AlertToast in Frameworks */,
 				01D401352D62E64A00E7E3E6 /* MLXVLM in Frameworks */,
 				01DDD72B2CAAA865004F1211 /* BeanCountTax in Frameworks */,
-				01DF0FE92C92CB6300267DCC /* CompactSlider in Frameworks */,
-				01F1D4132C93287D00FEF65F /* KeyboardShortcuts in Frameworks */,
-				01F1D4802C9330A200FEF65F /* ActivityIndicatorView in Frameworks */,
-				015164EB2D4DD6EE007627FD /* MarkdownUI in Frameworks */,
 				01B9AFFA2CA78C8600C1712D /* AsyncAlgorithms in Frameworks */,
 				01B9AFF82CA78B1200C1712D /* BeanCountParser in Frameworks */,
-				01198C1D2C92B04600BA8CA3 /* Splash in Frameworks */,
 				01DF0FE62C92CB2700267DCC /* Logging in Frameworks */,
 				01B9AFF62CA78B0500C1712D /* Synogging in Frameworks */,
 				01F1D42B2C932ED400FEF65F /* OllamaKit in Frameworks */,
@@ -150,16 +121,6 @@
 		01C627AC2C9279660009E8A0 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
-				0174BF2B2D62BC4B001A5828 /* MLXEmbedders */,
-				0129DCC02D5155A9001C4AE9 /* StableDiffusion */,
-				0129DCBF2D51521D001C4AE9 /* MLXVLM */,
-				015167612D5149EC007627FD /* MLXLLM */,
-				015164EE2D4DD8A8007627FD /* MLXLMCommon */,
-				01DDD7272CAA5212004F1211 /* BeanCountTax */,
-				017FB1C42CA788EC00F9B5B0 /* Synogging */,
-				017FAE892CA6454100F9B5B0 /* BeanCountParserUtils */,
-				017FAE882CA643AB00F9B5B0 /* BeanCountParser */,
-				017FAE872CA54B4A00F9B5B0 /* BeanCountModel */,
 			);
 			path = Libraries;
 			sourceTree = "<group>";
@@ -167,7 +128,6 @@
 		01C628872C927A3D0009E8A0 /* Applications */ = {
 			isa = PBXGroup;
 			children = (
-				01DDD73C2CAAAC79004F1211 /* BeanCountCLI */,
 				01198B862C92A5E600BA8CA3 /* Synomancer */,
 			);
 			path = Applications;
@@ -194,23 +154,14 @@
 			);
 			name = Synomancer;
 			packageProductDependencies = (
-				01198C1C2C92B04600BA8CA3 /* Splash */,
 				01DF0FE52C92CB2700267DCC /* Logging */,
-				01DF0FE82C92CB6300267DCC /* CompactSlider */,
-				01DF0FEB2C92CB9E00267DCC /* AlertToast */,
 				01DF0FEE2C92CBBB00267DCC /* Alamofire */,
-				01DF10612C9300D600267DCC /* SwiftUIIntrospect */,
-				01F1D4122C93287D00FEF65F /* KeyboardShortcuts */,
-				01F1D4142C93287D00FEF65F /* Vortex */,
-				01F1D4162C93287D00FEF65F /* WrappingHStack */,
 				01F1D42A2C932ED400FEF65F /* OllamaKit */,
-				01F1D47F2C9330A200FEF65F /* ActivityIndicatorView */,
 				01B9AFF52CA78B0500C1712D /* Synogging */,
 				01B9AFF72CA78B1200C1712D /* BeanCountParser */,
 				01B9AFF92CA78C8600C1712D /* AsyncAlgorithms */,
 				01DDD72A2CAAA865004F1211 /* BeanCountTax */,
 				015164E72D4DCF83007627FD /* MLX */,
-				015164EA2D4DD6EE007627FD /* MarkdownUI */,
 				01D401322D62E64200E7E3E6 /* MLXLMCommon */,
 				01D401342D62E64A00E7E3E6 /* MLXVLM */,
 				01D401362D62E64F00E7E3E6 /* MLXLLM */,
@@ -244,21 +195,17 @@
 			);
 			mainGroup = 0169AB9F2C7C249D00F166DA;
 			packageReferences = (
-				014322802C8F2E3F00602CAD /* XCRemoteSwiftPackageReference "splash" */,
-				0143228D2C8F307100602CAD /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
-				014322992C8F316800602CAD /* XCRemoteSwiftPackageReference "Vortex" */,
-				0143229F2C8F321400602CAD /* XCRemoteSwiftPackageReference "WrappingHStack" */,
-				014322C12C8F3A5400602CAD /* XCRemoteSwiftPackageReference "OllamaKit" */,
-				014322E12C8FCDF000602CAD /* XCRemoteSwiftPackageReference "ActivityIndicatorView" */,
+				A1000000000000000000000A /* XCLocalSwiftPackageReference "Libraries/Synogging" */,
+				A1000000000000000000000B /* XCLocalSwiftPackageReference "Libraries/BeanCountParser" */,
+				A1000000000000000000000C /* XCLocalSwiftPackageReference "Libraries/BeanCountTax" */,
+				A1000000000000000000000D /* XCLocalSwiftPackageReference "Libraries/MLXLMCommon" */,
+				A1000000000000000000000E /* XCLocalSwiftPackageReference "Libraries/MLXVLM" */,
+				A1000000000000000000000F /* XCLocalSwiftPackageReference "Libraries/MLXLLM" */,
+				A10000000000000000000001 /* XCLocalSwiftPackageReference "Libraries/OllamaKit" */,
 				01C629882C927B7A0009E8A0 /* XCRemoteSwiftPackageReference "mlx-swift" */,
 				0137174D2C927D3100ABDBCB /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
-				0137174E2C927D6600ABDBCB /* XCRemoteSwiftPackageReference "SwiftUIX" */,
 				01DF0FE42C92CB2700267DCC /* XCRemoteSwiftPackageReference "swift-log" */,
-				01DF0FE72C92CB6300267DCC /* XCRemoteSwiftPackageReference "CompactSlider" */,
-				01DF0FEA2C92CB9E00267DCC /* XCRemoteSwiftPackageReference "AlertToast" */,
 				01DF0FED2C92CBBB00267DCC /* XCRemoteSwiftPackageReference "Alamofire" */,
-				01DF10602C9300D600267DCC /* XCRemoteSwiftPackageReference "swiftui-introspect" */,
-				015164E92D4DD582007627FD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			productRefGroup = 0169ABA92C7C249D00F166DA /* Products */;
 			projectDirPath = "";
@@ -529,85 +476,44 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		A10000000000000000000001 /* XCLocalSwiftPackageReference "Libraries/OllamaKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/OllamaKit;
+		};
+		A1000000000000000000000A /* XCLocalSwiftPackageReference "Libraries/Synogging" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/Synogging;
+		};
+		A1000000000000000000000B /* XCLocalSwiftPackageReference "Libraries/BeanCountParser" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/BeanCountParser;
+		};
+		A1000000000000000000000C /* XCLocalSwiftPackageReference "Libraries/BeanCountTax" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/BeanCountTax;
+		};
+		A1000000000000000000000D /* XCLocalSwiftPackageReference "Libraries/MLXLMCommon" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/MLXLMCommon;
+		};
+		A1000000000000000000000E /* XCLocalSwiftPackageReference "Libraries/MLXVLM" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/MLXVLM;
+		};
+		A1000000000000000000000F /* XCLocalSwiftPackageReference "Libraries/MLXLLM" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Libraries/MLXLLM;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		0137174D2C927D3100ABDBCB /* XCRemoteSwiftPackageReference "swift-async-algorithms" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-async-algorithms.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.1;
-			};
-		};
-		0137174E2C927D6600ABDBCB /* XCRemoteSwiftPackageReference "SwiftUIX" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SwiftUIX/SwiftUIX.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.2.2;
-			};
-		};
-		014322802C8F2E3F00602CAD /* XCRemoteSwiftPackageReference "splash" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/johnsundell/splash.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.16.0;
-			};
-		};
-		0143228D2C8F307100602CAD /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.2;
-			};
-		};
-		014322992C8F316800602CAD /* XCRemoteSwiftPackageReference "Vortex" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/twostraws/Vortex";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.1;
-			};
-		};
-		0143229F2C8F321400602CAD /* XCRemoteSwiftPackageReference "WrappingHStack" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ksemianov/WrappingHStack";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.2.0;
-			};
-		};
-		014322C12C8F3A5400602CAD /* XCRemoteSwiftPackageReference "OllamaKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/kevinhermawan/OllamaKit.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
-			};
-		};
-		014322E12C8FCDF000602CAD /* XCRemoteSwiftPackageReference "ActivityIndicatorView" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/exyte/ActivityIndicatorView.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.1.1;
-			};
-		};
-		015164E92D4DD582007627FD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.4.1;
-			};
-		};
-		01C629882C927B7A0009E8A0 /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/charwliu/mlx-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.21.2;
+				minimumVersion = 1.1.7;
 			};
 		};
 		01DF0FE42C92CB2700267DCC /* XCRemoteSwiftPackageReference "swift-log" */ = {
@@ -615,23 +521,7 @@
 			repositoryURL = "https://github.com/apple/swift-log.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.6.1;
-			};
-		};
-		01DF0FE72C92CB6300267DCC /* XCRemoteSwiftPackageReference "CompactSlider" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/buh/CompactSlider.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.1.6;
-			};
-		};
-		01DF0FEA2C92CB9E00267DCC /* XCRemoteSwiftPackageReference "AlertToast" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/elai950/AlertToast.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.9;
+				minimumVersion = 1.15.1;
 			};
 		};
 		01DF0FED2C92CBBB00267DCC /* XCRemoteSwiftPackageReference "Alamofire" */ = {
@@ -639,41 +529,33 @@
 			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 5.9.1;
+				minimumVersion = 5.12.2;
 			};
 		};
-		01DF10602C9300D600267DCC /* XCRemoteSwiftPackageReference "swiftui-introspect" */ = {
+		01C629882C927B7A0009E8A0 /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/siteline/swiftui-introspect.git";
+			repositoryURL = "https://github.com/ml-explore/mlx-swift";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.0;
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.32.3;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		01198C1C2C92B04600BA8CA3 /* Splash */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 014322802C8F2E3F00602CAD /* XCRemoteSwiftPackageReference "splash" */;
-			productName = Splash;
-		};
 		015164E72D4DCF83007627FD /* MLX */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 01C629882C927B7A0009E8A0 /* XCRemoteSwiftPackageReference "mlx-swift" */;
 			productName = MLX;
 		};
-		015164EA2D4DD6EE007627FD /* MarkdownUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 015164E92D4DD582007627FD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
-			productName = MarkdownUI;
-		};
 		01B9AFF52CA78B0500C1712D /* Synogging */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = A1000000000000000000000A /* XCLocalSwiftPackageReference "Libraries/Synogging" */;
 			productName = Synogging;
 		};
 		01B9AFF72CA78B1200C1712D /* BeanCountParser */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = A1000000000000000000000B /* XCLocalSwiftPackageReference "Libraries/BeanCountParser" */;
 			productName = BeanCountParser;
 		};
 		01B9AFF92CA78C8600C1712D /* AsyncAlgorithms */ = {
@@ -683,18 +565,22 @@
 		};
 		01D401322D62E64200E7E3E6 /* MLXLMCommon */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = A1000000000000000000000D /* XCLocalSwiftPackageReference "Libraries/MLXLMCommon" */;
 			productName = MLXLMCommon;
 		};
 		01D401342D62E64A00E7E3E6 /* MLXVLM */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = A1000000000000000000000E /* XCLocalSwiftPackageReference "Libraries/MLXVLM" */;
 			productName = MLXVLM;
 		};
 		01D401362D62E64F00E7E3E6 /* MLXLLM */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = A1000000000000000000000F /* XCLocalSwiftPackageReference "Libraries/MLXLLM" */;
 			productName = MLXLLM;
 		};
 		01DDD72A2CAAA865004F1211 /* BeanCountTax */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = A1000000000000000000000C /* XCLocalSwiftPackageReference "Libraries/BeanCountTax" */;
 			productName = BeanCountTax;
 		};
 		01DF0FE52C92CB2700267DCC /* Logging */ = {
@@ -702,50 +588,15 @@
 			package = 01DF0FE42C92CB2700267DCC /* XCRemoteSwiftPackageReference "swift-log" */;
 			productName = Logging;
 		};
-		01DF0FE82C92CB6300267DCC /* CompactSlider */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 01DF0FE72C92CB6300267DCC /* XCRemoteSwiftPackageReference "CompactSlider" */;
-			productName = CompactSlider;
-		};
-		01DF0FEB2C92CB9E00267DCC /* AlertToast */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 01DF0FEA2C92CB9E00267DCC /* XCRemoteSwiftPackageReference "AlertToast" */;
-			productName = AlertToast;
-		};
 		01DF0FEE2C92CBBB00267DCC /* Alamofire */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 01DF0FED2C92CBBB00267DCC /* XCRemoteSwiftPackageReference "Alamofire" */;
 			productName = Alamofire;
 		};
-		01DF10612C9300D600267DCC /* SwiftUIIntrospect */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 01DF10602C9300D600267DCC /* XCRemoteSwiftPackageReference "swiftui-introspect" */;
-			productName = SwiftUIIntrospect;
-		};
-		01F1D4122C93287D00FEF65F /* KeyboardShortcuts */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 0143228D2C8F307100602CAD /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
-			productName = KeyboardShortcuts;
-		};
-		01F1D4142C93287D00FEF65F /* Vortex */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 014322992C8F316800602CAD /* XCRemoteSwiftPackageReference "Vortex" */;
-			productName = Vortex;
-		};
-		01F1D4162C93287D00FEF65F /* WrappingHStack */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 0143229F2C8F321400602CAD /* XCRemoteSwiftPackageReference "WrappingHStack" */;
-			productName = WrappingHStack;
-		};
 		01F1D42A2C932ED400FEF65F /* OllamaKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 014322C12C8F3A5400602CAD /* XCRemoteSwiftPackageReference "OllamaKit" */;
+			package = A10000000000000000000001 /* XCLocalSwiftPackageReference "Libraries/OllamaKit" */;
 			productName = OllamaKit;
-		};
-		01F1D47F2C9330A200FEF65F /* ActivityIndicatorView */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 014322E12C8FCDF000602CAD /* XCRemoteSwiftPackageReference "ActivityIndicatorView" */;
-			productName = ActivityIndicatorView;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

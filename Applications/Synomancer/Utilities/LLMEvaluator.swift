@@ -21,7 +21,7 @@ class LLMEvaluator {
     var modelInfo = ""
     var stat = ""
     
-    let modelConfiguration = ModelRegistry.qwen2VL2BInstruct4Bit
+    let modelConfiguration = VLMRegistry.qwen2VL2BInstruct4Bit
     
     let generateParameters = MLXLMCommon.GenerateParameters(temperature: 0.6)
     
@@ -45,7 +45,7 @@ class LLMEvaluator {
         switch loadState {
         case .idle:
             // limit the buffer cache
-            MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
+            MLX.Memory.cacheLimit = 20 * 1024 * 1024
             
             let modelContainer = try await VLMModelFactory.shared.loadContainer(
                 configuration: modelConfiguration

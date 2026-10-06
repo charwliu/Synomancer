@@ -9,7 +9,6 @@
 
 #if os(macOS)
 import SwiftUI
-import Vortex
 
 struct PromptPanelView: View {
     @FocusState private var focused: Bool?
@@ -93,17 +92,11 @@ struct PromptPanelView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                VortexView(.splash.makeUniqueCopy()) {
-                    Circle()
-                        .fill(.white)
-                        .frame(width: 20, height: 20)
-                        .tag("circle")
-                }
-            }
-            .frame(height: 50)
-            .background(Color.clear)
-            
+            Image(systemName: "sparkles")
+                .foregroundStyle(.secondary)
+                .symbolEffect(.pulse, options: .repeating)
+                .frame(height: 50)
+
             VStack(alignment: .leading) {
                 inputField
                     .layoutPriority(-1)

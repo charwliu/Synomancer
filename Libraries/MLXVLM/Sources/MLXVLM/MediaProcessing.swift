@@ -173,7 +173,6 @@ public enum MediaProcessing {
 
         let durationInSeconds = duration.seconds
         let samplesPerSecond = Double(samplesPerSecond)
-        let secondsPerSample = 1.0 / samplesPerSecond
         let totalFramesToSample = durationInSeconds * samplesPerSecond
         let durationTimeValue = duration.value
         let sampledTimeValues = MLXArray.linspace(
@@ -186,13 +185,13 @@ public enum MediaProcessing {
 
         // Collect the frames
         var ciImages: [CIImage] = []
-        for await result in await generator.images(for: sampledTimes) {
+        for await result in generator.images(for: sampledTimes) {
             switch result {
-            case .success(requestedTime: let requested, let image, actualTime: let actual):
+            case .success(requestedTime: _, let image, actualTime: _):
                 let ciImage = CIImage(
                     cgImage: image, options: [.colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
                 ciImages.append(ciImage)
-            case .failure(requestedTime: let requested, let error):
+            case .failure(requestedTime: _, _):
                 break
             }
         }

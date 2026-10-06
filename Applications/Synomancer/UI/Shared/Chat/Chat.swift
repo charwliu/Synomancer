@@ -56,9 +56,13 @@ struct Chat: View, Sendable {
     
     func onConversationTap(_ conversation: ConversationSD) {
         Task {
-            try await conversationStore.selectConversation(conversation)
-            languageModelStore.setModel(model: conversation.model)
-            await Haptics.shared.mediumTap()
+            do {
+                try await conversationStore.selectConversation(conversation)
+                languageModelStore.setModel(model: conversation.model)
+                await Haptics.shared.mediumTap()
+            } catch {
+                AppStore.shared.uiLog(message: error.localizedDescription, status: .error)
+            }
         }
         withAnimation {
             showMenu.toggle()
@@ -98,7 +102,7 @@ struct Chat: View, Sendable {
     
     func copyChat(_ json: Bool) {
         Task {
-            let messages = await ConversationStore.shared.messages
+            let messages = ConversationStore.shared.messages
             
             if messages.count == 0 {
                 return

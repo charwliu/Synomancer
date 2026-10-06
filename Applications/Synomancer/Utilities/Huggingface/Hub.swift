@@ -181,7 +181,7 @@ public class LanguageModelConfigurationFromHub  {
         }
     }
 
-    func loadConfig(
+    nonisolated(nonsending) func loadConfig(
         modelName: String,
         hubApi: HubApi = .shared
     ) async throws -> Configurations {
@@ -192,7 +192,7 @@ public class LanguageModelConfigurationFromHub  {
         return try await loadConfig(modelFolder: downloadedModelFolder, hubApi: hubApi)
     }
 
-    func loadConfig(
+    nonisolated(nonsending) func loadConfig(
         modelFolder: URL,
         hubApi: HubApi = .shared
     ) async throws -> Configurations {

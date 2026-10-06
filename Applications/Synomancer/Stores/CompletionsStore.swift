@@ -9,8 +9,8 @@
 import Foundation
 import SwiftUI
 
-@Observable
-final class CompletionsStore: @unchecked Sendable {
+@Observable @MainActor
+final class CompletionsStore {
     static let shared = CompletionsStore(swiftDataService: SwiftDataService.shared)
     private let swiftDataService: SwiftDataService
     
@@ -23,13 +23,13 @@ final class CompletionsStore: @unchecked Sendable {
     
     func save() {
         Task {
-            try? await swiftDataService.updateCompletionInstructions(completions)
+            try? swiftDataService.updateCompletionInstructions(completions)
         }
     }
     
     func delete(_ completion: CompletionInstructionSD) {
         Task {
-            try? await swiftDataService.deleteCompletionInstruction(completion)
+            try? swiftDataService.deleteCompletionInstruction(completion)
             load()
         }
     }
@@ -37,11 +37,11 @@ final class CompletionsStore: @unchecked Sendable {
     func load() {
         Task {
             var loadedCompletions: [CompletionInstructionSD] = []
-            loadedCompletions = (try? await SwiftDataService.shared.fetchCompletionInstructions()) ?? []
+            loadedCompletions = (try? SwiftDataService.shared.fetchCompletionInstructions()) ?? []
             
             if loadedCompletions.count == 0 {
-                try? await SwiftDataService.shared.updateCompletionInstructions(CompletionInstructionSD.sample)
-                loadedCompletions = (try? await SwiftDataService.shared.fetchCompletionInstructions()) ?? []
+                try? SwiftDataService.shared.updateCompletionInstructions(CompletionInstructionSD.sample)
+                loadedCompletions = (try? SwiftDataService.shared.fetchCompletionInstructions()) ?? []
             }
             
             withAnimation {

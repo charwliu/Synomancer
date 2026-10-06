@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import ActivityIndicatorView
 
 struct ConversationStatusView: View {
     var state: ConversationState

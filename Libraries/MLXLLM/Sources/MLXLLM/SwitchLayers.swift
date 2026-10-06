@@ -96,7 +96,7 @@ class SwitchLinear: Module, Quantizable {
 
     func callAsFunction(_ x: MLXArray, _ indices: MLXArray) -> MLXArray {
         let weightT = self.weight.swappedAxes(-1, -2)
-        var result = MLX.gatherMatmul(x, weightT, rhsIndices: indices)
+        var result = MLX.gatherMM(x, weightT, rhsIndices: indices)
 
         if let bias = self.bias {
             result = result + MLX.expandedDimensions(bias[indices], axis: -2)
@@ -105,24 +105,26 @@ class SwitchLinear: Module, Quantizable {
         return result
     }
 
-    func toQuantized(groupSize: Int = 64, bits: Int = 4) -> Module {
-        QuantizedSwitchLinear(self, groupSize: groupSize, bits: bits)
+    func toQuantized(groupSize: Int = 64, bits: Int = 4, mode: QuantizationMode = .affine) -> Module {
+        QuantizedSwitchLinear(self, groupSize: groupSize, bits: bits, mode: mode)
     }
 }
 
-class QuantizedSwitchLinear: SwitchLinear {
+class QuantizedSwitchLinear: SwitchLinear, Quantized {
     @ModuleInfo(key: "scales") var scales: MLXArray
-    @ModuleInfo(key: "biases") var biases: MLXArray
+    @ModuleInfo(key: "biases") var biases: MLXArray?
 
     let groupSize: Int
     let bits: Int
+    let mode: QuantizationMode
 
-    init(_ other: SwitchLinear, groupSize: Int = 64, bits: Int = 4) {
+    init(_ other: SwitchLinear, groupSize: Int = 64, bits: Int = 4, mode: QuantizationMode = .affine) {
+        self.mode = mode
         self.groupSize = groupSize
         self.bits = bits
 
         let (quantizedWeight, scales, biases) = MLX.quantized(
-            other.weight, groupSize: groupSize, bits: bits)
+            other.weight, groupSize: groupSize, bits: bits, mode: mode)
 
         self._scales.wrappedValue = scales
         self._biases.wrappedValue = biases
@@ -135,7 +137,7 @@ class QuantizedSwitchLinear: SwitchLinear {
     }
 
     override func callAsFunction(_ x: MLXArray, _ indices: MLXArray) -> MLXArray {
-        var result = MLX.gatherQuantizedMatmul(
+        var result = MLX.gatherQuantizedMM(
             x,
             self.weight,
             scales: self.scales,
@@ -143,7 +145,8 @@ class QuantizedSwitchLinear: SwitchLinear {
             rhsIndices: indices,
             transpose: true,
             groupSize: self.groupSize,
-            bits: self.bits
+            bits: self.bits,
+            mode: self.mode
         )
 
         if let bias = self.bias {

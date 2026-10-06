@@ -8,25 +8,20 @@
 
 
 import SwiftUI
-import MarkdownUI
 
 struct CodeBlockView: View {
-    var configuration: CodeBlockConfiguration
-    var language: String {
-        let language = configuration.language ?? "code"
-        return language != "" ? language : "code"
-    }
-    
+    var code: String
+    var language: String?
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(language)
+                Text(language.flatMap { $0.isEmpty ? nil : $0 } ?? "code")
                     .font(.system(size: 13, design: .monospaced))
                     .fontWeight(.semibold)
                 Spacer()
                 
                 Button(action: {
-                    Clipboard.shared.setString(configuration.content)
+                    Clipboard.shared.setString(code)
                 }) {
                     Image(systemName: "doc.on.doc")
                         .padding(7)
@@ -35,23 +30,20 @@ struct CodeBlockView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 4)
-            .background(MarkdownColours.secondaryBackground)
+            .background(Color.secondary.opacity(0.1))
             
             Divider()
             
             ScrollView(.horizontal) {
-                configuration.label
-                    .fixedSize(horizontal: false, vertical: true)
-                    .relativeLineSpacing(.em(0.225))
-                    .markdownTextStyle {
-                        FontFamilyVariant(.monospaced)
-                        FontSize(.em(0.85))
-                    }
+                Text(code)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: true)
                     .padding(16)
             }
         }
-        .background(MarkdownColours.secondaryBackground)
+        .background(Color.secondary.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .markdownMargin(top: .zero, bottom: .em(0.8))
+
     }
 }

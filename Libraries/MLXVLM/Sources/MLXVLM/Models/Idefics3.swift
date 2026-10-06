@@ -809,7 +809,7 @@ public class Idefics3Processor: UserInputProcessor {
 
         if input.images.isEmpty {
             // No image scenario
-            let tokens = try tokenizer.encode(text: prompt)
+            let tokens = tokenizer.encode(text: prompt)
             let tokensArray = MLXArray(tokens).expandedDimensions(axis: 0)
             let mask = ones(like: tokensArray)
             return LMInput(text: .init(tokens: tokensArray, mask: mask), image: nil)
@@ -819,10 +819,9 @@ public class Idefics3Processor: UserInputProcessor {
                 throw VLMError.singleImageAllowed
             }
 
-            let count = config.imageSequenceLength ?? 1
 
             // Encode only the text part of the prompt, without <image>
-            var promptTokens = try tokenizer.encode(text: prompt)
+            var promptTokens = tokenizer.encode(text: prompt)
 
             let imageTokenIndex = promptTokens.count / 2
             promptTokens.insert(imageTokenId, at: imageTokenIndex)

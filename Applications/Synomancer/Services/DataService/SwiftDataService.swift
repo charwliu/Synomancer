@@ -56,15 +56,16 @@ extension Array where Element == any PersistentModel.Type {
     static let all = [LanguageModelSD.self, ConversationSD.self, MessageSD.self, CompletionInstructionSD.self] as [any PersistentModel.Type]
 }
 
-final actor SwiftDataService: ModelActor {
+/// UI-facing models and their context share the main actor; models never cross actors.
+@MainActor
+final class SwiftDataService {
     let modelContainer: ModelContainer
-    let modelExecutor: ModelExecutor
     private let modelContext: ModelContext
 
     static let shared = SwiftDataService()
 
-    init() {
-        let sharedModelContainer: ModelContainer = {
+    init(modelContainer: ModelContainer? = nil) {
+        let sharedModelContainer: ModelContainer = modelContainer ?? {
             let schema = Schema(.all)
             let modelConfiguration = ModelConfiguration(
                 schema: schema, isStoredInMemoryOnly: false)
@@ -79,8 +80,7 @@ final actor SwiftDataService: ModelActor {
 
         self.modelContext = ModelContext(sharedModelContainer)
         self.modelContext.autosaveEnabled = false
-        modelContainer = sharedModelContainer
-        modelExecutor = DefaultSerialModelExecutor(modelContext: modelContext)
+        self.modelContainer = sharedModelContainer
     }
 }
 
@@ -226,5 +226,3 @@ extension SwiftDataService {
         try modelContext.saveChanges()
     }
 }
-
-extension ReferenceWritableKeyPath: @unchecked @retroactive Sendable {}

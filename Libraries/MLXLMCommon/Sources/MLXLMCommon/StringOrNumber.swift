@@ -47,11 +47,11 @@ public enum StringOrNumber: Codable, Equatable, Sendable {
     /// This will not coerce `Float` or `String` to `Int`.
     public func asInts() -> [Int]? {
         switch self {
-        case .string(let string): nil
+        case .string: nil
         case .int(let v): [v]
-        case .float(let float): nil
+        case .float: nil
         case .ints(let array): array
-        case .floats(let array): nil
+        case .floats: nil
         }
     }
 
@@ -60,11 +60,11 @@ public enum StringOrNumber: Codable, Equatable, Sendable {
     /// This will not coerce `Float` or `String` to `Int`.
     public func asInt() -> Int? {
         switch self {
-        case .string(let string): nil
+        case .string: nil
         case .int(let v): v
-        case .float(let float): nil
+        case .float: nil
         case .ints(let array): array.count == 1 ? array[0] : nil
-        case .floats(let array): nil
+        case .floats: nil
         }
     }
 
@@ -73,7 +73,7 @@ public enum StringOrNumber: Codable, Equatable, Sendable {
     /// This will not coerce `Int` or `String` to `Float`.
     public func asFloats() -> [Float]? {
         switch self {
-        case .string(let string): nil
+        case .string: nil
         case .int(let v): [Float(v)]
         case .float(let float): [float]
         case .ints(let array): array.map { Float($0) }
@@ -86,7 +86,7 @@ public enum StringOrNumber: Codable, Equatable, Sendable {
     /// This will not coerce `Int` or `String` to `Float`.
     public func asFloat() -> Float? {
         switch self {
-        case .string(let string): nil
+        case .string: nil
         case .int(let v): Float(v)
         case .float(let float): float
         case .ints(let array): array.count == 1 ? Float(array[0]) : nil

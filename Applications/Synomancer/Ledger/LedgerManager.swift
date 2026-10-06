@@ -137,8 +137,3 @@ class LedgerManager: @unchecked Sendable {
         return (hash, text)
     }
 }
-
-
-extension SHA256.Digest: @unchecked @retroactive Sendable {
-    
-}
