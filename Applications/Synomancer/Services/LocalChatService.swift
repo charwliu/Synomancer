@@ -69,7 +69,7 @@ actor LocalChatService {
     }
 
     func generate(modelID: String, messages: [LocalChatMessage], cache: SpeechCacheAccess.Configuration,
-                  temperature: Float = 0.6, maxTokens: Int = 2048, topP: Float = 1, stop: [String] = [], useMTP: Bool = true, frameReasoning: Bool = false, reusePromptCache: Bool = true,
+                  temperature: Float = 0.6, maxTokens: Int = 2048, topP: Float = 1, stop: [String] = [], useMTP: Bool = true, frameReasoning: Bool = false, reusePromptCache: Bool = true, prefillStepSize: Int? = nil,
                   onUpdate: @escaping @Sendable (String, Int) -> Void) async throws -> LocalChatResult {
         while generating {
             try Task.checkCancellation()
@@ -152,7 +152,8 @@ actor LocalChatService {
                     renderedPromptTail: context.tokenizer.decode(tokenIds: Array(tail), skipSpecialTokens: false), config: config)
             }
             let promptTokens = input.text.tokens.size
-            let parameters = GenerateParameters(maxTokens: maxTokens, temperature: temperature, topP: topP)
+            var parameters = GenerateParameters(maxTokens: maxTokens, temperature: temperature, topP: topP)
+            parameters.prefill.stepSize = prefillStepSize
             if useMTP && temperature == 0, let drafter {
                 promptCheckpoint = nil
                 return try await generateMTP(input: input, context: context, drafter: drafter,
@@ -186,16 +187,23 @@ actor LocalChatService {
             // Keep the unstable assistant/template tail out of the checkpoint.
             // A fixed token boundary also permits retries and short follow-ups to
             // reuse the same prefix without rolling back Qwen's recurrent state.
-            let checkpointCount = canCache ? max(0, (promptTokens - 128) / 256 * 256) : 0
+            // Retain Qwen's validated boundaries: tighter checkpoints changed
+            // the answer in the real hybrid-attention regression fixture.
+            let checkpointStride = model.modelType.hasPrefix("gemma4") ? 128 : 256
+            let checkpointTail = model.modelType.hasPrefix("gemma4") ? 32 : 128
+            let checkpointCount = canCache && promptTokens >= 384
+                ? (promptTokens - checkpointTail) / checkpointStride * checkpointStride : 0
             var checkpointSeconds: Double = 0
             if checkpointCount > cachedCount, let generationCache {
                 let start = ContinuousClock.now
                 let prefix = LMInput(tokens: MLXArray(Array(promptIDs[cachedCount..<checkpointCount])))
                 // Only prefill this prefix. The sampled token is discarded and is
                 // never committed to cache; greedy sampling does not consume RNG.
+                var prefixParameters = GenerateParameters(maxTokens: 1, temperature: 0)
+                prefixParameters.prefill = parameters.prefill
                 let prefixIterator = try TokenIterator(input: prefix, model: context.model,
                     cache: generationCache, state: generationState,
-                    parameters: GenerateParameters(maxTokens: 1, temperature: 0))
+                    parameters: prefixParameters)
                 generationState = prefixIterator.state
                 let bytes = generationCache.flatMap { $0.state }.reduce(0) { $0 + $1.nbytes }
                 let limit = min(UInt64(2 * 1024 * 1024 * 1024), ProcessInfo.processInfo.physicalMemory / 64)
