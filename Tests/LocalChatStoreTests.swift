@@ -54,6 +54,11 @@ struct LocalChatStoreTests {
         precondition(messages.count == 4 && messages.last!.content.contains("REDWOOD-472") && messages.last!.done)
         precondition(messages.last!.displayContent.contains("REDWOOD-472") && !messages.last!.displayContent.contains("</think>"))
         precondition(oldConversation.model?.modelProvider == .mlx)
+        precondition(messages.last!.tokensPerSecond.map { $0.isFinite && $0 > 0 } == true)
+        precondition((messages.last!.completionTokens ?? 0) > 0)
+        precondition(messages.last!.liveTokensPerSecond == nil)
+        precondition(originalAssistant.tokensPerSecond == nil)
+        print("PASS: final throughput is saved; old messages keep absent metrics; live estimate is cleared")
         precondition(spoken.isEmpty)
         print("PASS: real ConversationStore continues old history through MLX and saves the complete final answer")
 
@@ -77,12 +82,15 @@ struct LocalChatStoreTests {
 
         chat.sendPrompt(userPrompt: "Write a detailed story of at least 2000 words about exploring the ocean.", model: selected)
         let start = Date()
-        while chat.messages.last?.content.isEmpty != false && Date().timeIntervalSince(start) < 30 {
+        while chat.messages.last?.liveTokensPerSecond == nil && Date().timeIntervalSince(start) < 30 {
             try await Task.sleep(for: .milliseconds(20))
         }
         precondition(chat.conversationState == .loading && chat.messages.last?.content.isEmpty == false)
         let cancelled = chat.messages.last!
+        precondition(cancelled.liveTokensPerSecond.map { $0.isFinite && $0 > 0 } == true)
+        print("PASS: live throughput estimate appears while generating")
         chat.stopGenerate()
+        precondition(cancelled.liveTokensPerSecond == nil && cancelled.tokensPerSecond == nil)
         let preserved = cancelled.content
         chat.sendPrompt(userPrompt: "Reply only with OK.", model: selected)
         try await waitForCompletion(chat)

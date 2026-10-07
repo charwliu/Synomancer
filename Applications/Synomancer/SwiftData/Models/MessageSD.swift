@@ -17,6 +17,10 @@ final class MessageSD: Identifiable {
     var role: String
     var done: Bool = false
     var error: Bool = false
+    // Optional fields allow existing histories to migrate without invented metrics.
+    var tokensPerSecond: Double? = nil
+    var completionTokens: Int? = nil
+    @Transient var liveTokensPerSecond: Double? = nil
     var createdAt: Date = Date.now
     @Attribute(.externalStorage) var image: Data?
     

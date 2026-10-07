@@ -20,6 +20,8 @@ final class ConversationStore {
     private var requestID: UUID?
     private var activeMessage: MessageSD?
     private var receivedTokens = 0
+    private var firstTokenUpdate: ContinuousClock.Instant?
+    private var firstTokenCount = 0
     var automaticSpeech: AutomaticResponseSpeech?
 
     @MainActor var conversationState: ConversationState = .completed
@@ -102,6 +104,7 @@ final class ConversationStore {
         generation = nil
         if let message = activeMessage {
             message.done = true
+            message.liveTokensPerSecond = nil
             try? swiftDataService.updateMessage(message)
         }
         activeMessage = nil
@@ -138,6 +141,8 @@ final class ConversationStore {
         requestID = request
         activeMessage = assistant
         receivedTokens = 0
+        firstTokenUpdate = nil
+        firstTokenCount = 0
         conversationState = .loading
         generation = Task {
             do {
@@ -155,11 +160,29 @@ final class ConversationStore {
                         guard self.requestID == request, count > self.receivedTokens else { return }
                         self.receivedTokens = count
                         self.activeMessage?.content = text
+                        if provider == .mlx {
+                            let now = ContinuousClock.now
+                            if let first = self.firstTokenUpdate {
+                                let elapsed = first.duration(to: now).components
+                                let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+                                if seconds >= 0.25 {
+                                    self.activeMessage?.liveTokensPerSecond = Double(count - self.firstTokenCount) / seconds
+                                }
+                            } else {
+                                self.firstTokenUpdate = now
+                                self.firstTokenCount = count
+                            }
+                        }
                     }
                 }
                 try Task.checkCancellation()
                 guard requestID == request else { return }
                 assistant.content = result.text
+                assistant.liveTokensPerSecond = nil
+                if provider == .mlx, result.tokensPerSecond.isFinite, result.tokensPerSecond > 0 {
+                    assistant.tokensPerSecond = result.tokensPerSecond
+                    assistant.completionTokens = result.completionTokens
+                }
                 assistant.done = true
                 assistant.error = false
                 try swiftDataService.updateMessage(assistant)
@@ -170,6 +193,7 @@ final class ConversationStore {
                 automaticSpeech?.responseCompleted(assistant.content)
             } catch {
                 guard requestID == request else { return }
+                assistant.liveTokensPerSecond = nil
                 assistant.error = !(error is CancellationError)
                 assistant.done = true
                 try? swiftDataService.updateMessage(assistant)

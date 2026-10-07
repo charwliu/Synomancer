@@ -77,6 +77,20 @@ struct ChatMessageView: View {
                     Spacer()
                 }
             }
+            if message.role == "assistant",
+               let speed = message.done ? message.tokensPerSecond : message.liveTokensPerSecond,
+               speed.isFinite, speed > 0 {
+                HStack(spacing: 6) {
+                    if !message.done { Text("≈") }
+                    Text("\(speed, format: .number.precision(.fractionLength(1))) tokens/s")
+                    if message.done, let count = message.completionTokens {
+                        Text("· \(count) tokens")
+                    }
+                }
+                .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                .padding(.top, 6)
+                .help("本地生成速度，不含加载和提示词处理；生成中为估算值，完成后为引擎统计值。")
+            }
 #if os(macOS)
             HStack(spacing: 0) {
                 /// Copy button
