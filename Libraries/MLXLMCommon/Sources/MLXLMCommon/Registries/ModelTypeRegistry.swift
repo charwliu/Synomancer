@@ -28,6 +28,11 @@ open class ModelTypeRegistry: @unchecked Sendable {
     private let lock = NSLock()
     private var creators: [String: @Sendable (URL) throws -> any LanguageModel]
 
+    /// Types available for local cache discovery without instantiating models.
+    public var supportedModelTypes: Set<String> {
+        lock.withLock { Set(creators.keys) }
+    }
+
     /// Add a new model to the type registry.
     public func registerModelType(
         _ type: String, creator: @Sendable @escaping (URL) throws -> any LanguageModel

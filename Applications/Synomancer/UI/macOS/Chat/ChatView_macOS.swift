@@ -108,9 +108,9 @@ struct ChatView: View {
                     Text("Synomancer")
                 }
                 #else
-                ToolbarItem(placement: .navigation) {
-                    Text("Synomancer")
-                }
+//                ToolbarItem(placement: .navigation) {
+//                    Text("Synomancer")
+//                }
                 #endif
 
                 

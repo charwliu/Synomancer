@@ -13,7 +13,7 @@ final class LanguageModelSD: Identifiable {
     @Attribute(.unique) var name: String
     var isAvailable: Bool = false
     var imageSupport: Bool = false
-    var modelProvider = ModelProvider.ollama
+    var modelProvider = ModelProvider.mlx
     
     @Relationship(deleteRule: .cascade, inverse: \ConversationSD.model)
     var conversations: [ConversationSD]? = []
@@ -32,7 +32,16 @@ final class LanguageModelSD: Identifiable {
 
 // MARK: - Helpers
 extension LanguageModelSD {
+    var requestModelID: String {
+        modelProvider == .openai && name.hasPrefix("openai:") ? String(name.dropFirst(7)) : name
+    }
+
+    var displayName: String {
+        modelProvider == .openai ? "OpenAI · " + requestModelID : name
+    }
+
     var prettyName: String {
+        if modelProvider != .ollama { return displayName }
         guard let modelName = name.components(separatedBy: ":").first else {
             return name
         }
@@ -66,8 +75,8 @@ extension LanguageModelSD {
     
     static var sample: [LanguageModelSD] {
         [
-            .init(name: "Llama:latest", modelProvider: .ollama),
-            .init(name: "Mistral:latest", modelProvider: .ollama)
+            .init(name: "mlx-community/Qwen2-VL-2B-Instruct-4bit", imageSupport: false, modelProvider: .mlx),
+            .init(name: "mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit", modelProvider: .mlx)
         ]
     }
 }

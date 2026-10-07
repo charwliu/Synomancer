@@ -43,7 +43,7 @@ struct MessageListView: View {
                 ScrollView {
                     ForEach(messages) { message in
                         let contextMenu = ContextMenu(menuItems: {
-                            Button(action: {Clipboard.shared.setString(message.content)}) {
+                            Button(action: {Clipboard.shared.setString(message.displayContent)}) {
                                 Label("Copy", systemImage: "doc.on.doc")
                             }
                             
@@ -53,10 +53,11 @@ struct MessageListView: View {
                             }
                             
                             Button(action: {
-                                onReadAloud(message.content)
+                                onReadAloud(message.displayContent)
                             }) {
                                 Label("Read Aloud", systemImage: "speaker.wave.3.fill")
                             }
+                            .disabled(message.displayContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 #endif
                             
                             if message.role == "user" {
@@ -108,14 +109,30 @@ struct MessageListView: View {
 #endif
             }
             
-            ReadingAloudView(onStopTap: stopReadingAloud)
+#if os(iOS)
+            ReadingAloudView(isGenerating: speechSynthesizer.isGenerating, generationStatus: speechSynthesizer.generationStatus, onStopTap: stopReadingAloud)
                 .frame(maxWidth: 400)
                 .showIf(speechSynthesizer.isSpeaking)
                 .transition(.asymmetric(
                     insertion: AnyTransition.opacity.combined(with: .scale(scale: 0.7, anchor: .top)),
                     removal: AnyTransition.opacity.combined(with: .scale(scale: 0.7, anchor: .top)))
                 )
+#endif
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if case .error = conversationState {
+                ConversationStatusView(state: conversationState)
+                    .textSelection(.enabled)
+                    .padding()
+                    .background(.regularMaterial)
+            }
+        }
+        .alert("Read Aloud", isPresented: Binding(
+            get: { speechSynthesizer.errorMessage != nil },
+            set: { if !$0 { speechSynthesizer.errorMessage = nil } }
+        )) {
+            Button("OK") { speechSynthesizer.errorMessage = nil }
+        } message: { Text(speechSynthesizer.errorMessage ?? "") }
     }
 }
 

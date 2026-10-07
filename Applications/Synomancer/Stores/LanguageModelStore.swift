@@ -15,55 +15,92 @@ final class LanguageModelStore {
     static let shared = LanguageModelStore(swiftDataService: SwiftDataService.shared)
     
     private var swiftDataService: SwiftDataService
+    private let preferences: UserDefaults
+    private var discoveryID = UUID()
     @MainActor var models: [LanguageModelSD] = []
     @MainActor var supportsImages = false
     @MainActor var selectedModel: LanguageModelSD?
     
-    init(swiftDataService: SwiftDataService) {
+    init(swiftDataService: SwiftDataService, preferences: UserDefaults = .standard) {
         self.swiftDataService = swiftDataService
+        self.preferences = preferences
     }
     
     @MainActor
     func setModel(model: LanguageModelSD?) {
-        if let model = model {
-            // check if model still exists
-            if models.contains(model) {
-                selectedModel = model
-            }
+        if let model, let available = models.first(where: { $0.name == model.name && $0.modelProvider == model.modelProvider }) {
+            selectedModel = available
         } else {
-            selectedModel = nil
+            let preferred = preferences.string(forKey: "defaultMLXModel")
+            selectedModel = models.first(where: { $0.name == preferred }) ?? models.first
         }
+        supportsImages = selectedModel?.imageSupport ?? false
     }
-    
+
     @MainActor
     func setModel(modelName: String) {
-        for model in models {
-            if model.name == modelName {
-                setModel(model: model)
-                return
-            }
-        }
-        if let lastModel = models.last {
-            setModel(model: lastModel)
-        }
+        setModel(model: models.first(where: { $0.name == modelName }))
     }
-    
+
     func loadModels() async throws {
-        let remoteModels = try await OllamaService.shared.getModels()
-        try swiftDataService.saveModels(models: remoteModels.map{LanguageModelSD(name: $0.name, imageSupport: $0.imageSupport, modelProvider: .ollama)})
-        
-        let storedModels = (try? swiftDataService.fetchModels()) ?? []
-        
-        await MainActor.run {
-            let remoteModelNames = remoteModels.map { $0.name }
-            let models = storedModels.filter{remoteModelNames.contains($0.name)}
-            self.models = models
+        let request = UUID()
+        discoveryID = request
+        do {
+            let remoteIDs = OpenAIConfiguration.modelIDs(in: preferences)
+            var localModels: [LocalChatModel] = []
+            do {
+                let cache = remoteIDs.isEmpty
+                    ? try await SpeechCacheAccess.authorizedConfiguration(in: preferences)
+                    : SpeechCacheAccess.configuration(in: preferences)
+                localModels = try await LocalChatService.shared.models(cache: cache)
+            } catch {
+                // A remote model remains usable when a removable local cache is absent.
+                if remoteIDs.isEmpty { throw error }
+            }
+            try Task.checkCancellation()
+            guard discoveryID == request else { return }
+            let stored = try swiftDataService.fetchModels()
+            var available: [LanguageModelSD] = []
+            for local in localModels {
+                let model = stored.first(where: { $0.name == local.id && $0.modelProvider == .mlx })
+                    ?? LanguageModelSD(name: local.id, imageSupport: local.supportsImages, modelProvider: .mlx)
+                model.imageSupport = local.supportsImages
+                model.isAvailable = true
+                available.append(model)
+            }
+            for id in remoteIDs {
+                let name = "openai:" + id
+                let model = stored.first(where: { $0.name == name && $0.modelProvider == .openai })
+                    ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .openai)
+                model.isAvailable = true
+                available.append(model)
+            }
+            // Old provider rows remain attached to their saved conversations.
+            // Never delete them during discovery: their relationship cascades.
+            try swiftDataService.saveModels(models: available)
+            models = available
+            setModel(model: selectedModel)
+            let preferred = preferences.string(forKey: "defaultMLXModel")
+            if !available.contains(where: { $0.name == preferred }), let selectedModel {
+                preferences.set(selectedModel.name, forKey: "defaultMLXModel")
+            }
+            AppStore.shared.isReachable = !available.isEmpty
+        } catch {
+            guard discoveryID == request else { return }
+            models = []
+            selectedModel = nil
+            supportsImages = false
+            AppStore.shared.isReachable = false
+            throw error
         }
     }
-    
+
     func deleteAllModels() async throws {
         await MainActor.run {
             self.models = []
+            self.selectedModel = nil
+            self.supportsImages = false
+            AppStore.shared.isReachable = false
         }
         try swiftDataService.deleteModels()
     }

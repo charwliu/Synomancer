@@ -13,78 +13,84 @@ struct Settings: View {
     var languageModelStore = LanguageModelStore.shared
     var conversationStore = ConversationStore.shared
     var swiftDataService = SwiftDataService.shared
-    
-    @AppStorage("ollamaUri") private var ollamaUri: String = ""
+
     @AppStorage("systemPrompt") private var systemPrompt: String = ""
     @AppStorage("vibrations") private var vibrations: Bool = true
     @AppStorage("colorScheme") private var colorScheme = AppColorScheme.system
-    @AppStorage("defaultOllamaModel") private var defaultOllamaModel: String = ""
-    @AppStorage("ollamaBearerToken") private var ollamaBearerToken: String = ""
+    @AppStorage("defaultMLXModel") private var defaultMLXModel: String = ""
     @AppStorage("appUserInitials") private var appUserInitials: String = ""
-    @AppStorage("pingInterval") private var pingInterval: String = "5"
     @AppStorage("voiceIdentifier") private var voiceIdentifier: String = ""
-    
+
     @StateObject private var speechSynthesiser = SpeechSynthesizer.shared
-    
+
     @Environment(\.presentationMode) var presentationMode
-    
+
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     @State private var cancellable: AnyCancellable?
-    
+    @State private var openAIKey = ""
+    @State private var originalOpenAIKey: String?
+
     private func save() {
-#if os(iOS)
-#endif
-        // remove trailing slash
-        if ollamaUri.last == "/" {
-            ollamaUri = String(ollamaUri.dropLast())
+        do {
+            // A failed Keychain read must not turn an untouched empty field into deletion.
+            if openAIKey != (originalOpenAIKey ?? "") {
+                try ChatSecrets.save(openAIKey.trimmingCharacters(in: .whitespacesAndNewlines), account: "openai")
+            }
+            if UserDefaults.standard.bool(forKey: "openAIEnabled") { _ = try OpenAIConfiguration.load() }
+        } catch {
+            AppStore.shared.uiLog(message: error.localizedDescription, status: .error)
+            return
         }
-        
-        OllamaService.shared.initEndpoint(url: ollamaUri, bearerToken: ollamaBearerToken)
         Task {
             await Haptics.shared.mediumTap()
-            try? await languageModelStore.loadModels()
+            do { try await languageModelStore.loadModels() }
+            catch { AppStore.shared.uiLog(message: error.localizedDescription, status: .error) }
         }
         presentationMode.wrappedValue.dismiss()
     }
-    
-    private func checkServer() {
+
+    private func refreshModels() {
         Task {
-            OllamaService.shared.initEndpoint(url: ollamaUri)
-            ollamaStatus = await OllamaService.shared.reachable()
-            try? await languageModelStore.loadModels()
+            do { try await languageModelStore.loadModels() }
+            catch { AppStore.shared.uiLog(message: error.localizedDescription, status: .error) }
         }
     }
-    
+
     private func deleteAll() {
         Task {
             conversationStore.deleteAllConversations()
             try? await languageModelStore.deleteAllModels()
         }
     }
-    
-    @State var ollamaStatus: Bool?
+
     var body: some View {
         SettingsView(
-            ollamaUri: $ollamaUri,
-            systemPrompt: $systemPrompt, 
+            systemPrompt: $systemPrompt,
             vibrations: $vibrations,
             colorScheme: $colorScheme,
-            defaultOllamModel: $defaultOllamaModel, 
-            ollamaBearerToken: $ollamaBearerToken,
+            defaultModel: $defaultMLXModel,
             appUserInitials: $appUserInitials,
-            pingInterval: $pingInterval,
             voiceIdentifier: $voiceIdentifier,
+            openAIKey: $openAIKey,
             save: save,
-            checkServer: checkServer,
+            refreshModels: refreshModels,
             deleteAll: deleteAll,
-            ollamaLangugeModels: languageModelStore.models,
+            localModels: languageModelStore.models,
             voices: speechSynthesiser.voices
         )
         .frame(maxWidth: 700)
+        .task {
+            do {
+                let stored = try ChatSecrets.read("openai")
+                openAIKey = stored
+                originalOpenAIKey = stored
+            }
+            catch { AppStore.shared.uiLog(message: error.localizedDescription, status: .error) }
+        }
         #if os(visionOS)
         .frame(minWidth: 600, minHeight: 800)
         #endif
-        .onChange(of: defaultOllamaModel) { _, modelName in
+        .onChange(of: defaultMLXModel) { _, modelName in
             languageModelStore.setModel(modelName: modelName)
         }
         .onAppear {

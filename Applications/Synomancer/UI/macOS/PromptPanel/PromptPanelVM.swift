@@ -1,95 +1,86 @@
-//
-//  PromptPanelVM.swift
-//  Synomancer
-//
-//  Created by Liu Wei on 2024/9/9.
-//
-
-
 import SwiftUI
-import Combine
-import OllamaKit
 
-@Observable
+@Observable @MainActor
 final class CompletionsPanelVM {
     var selectedText: String?
-    var onReceiveText: (String) -> ()
-    var messageResponse: String = ""
+    var onReceiveText: (String) -> Void
+    var messageResponse = ""
     var isReady = false
     let sentenceQueue = AsyncQueue<String>()
-    private var generation: AnyCancellable?
-    private var currentMessageBuffer: String = ""
+    private let preferences: UserDefaults
+    private var generation: Task<Void, Never>?
+    private var requestID: UUID?
+    private var receivedTokens = 0
+    private var delivered = ""
 
-    
-    init(onReceiveText: @escaping (String) -> Void = {_ in}) {
+    init(preferences: UserDefaults = .standard, onReceiveText: @escaping (String) -> Void = { _ in }) {
+        self.preferences = preferences
         self.onReceiveText = onReceiveText
     }
-    
+
     static func constructPrompt(completion: CompletionInstructionSD, selectedText: String) -> String {
-        var prompt = completion.instruction
-        
-        if prompt.contains("{{text}}") {
-            prompt.replace("{{text}}", with: selectedText)
-        } else {
-            prompt += " " + selectedText
+        if completion.instruction.contains("{{text}}") {
+            return completion.instruction.replacingOccurrences(of: "{{text}}", with: selectedText)
         }
-        
-        return prompt
+        return completion.instruction + " " + selectedText
     }
-    
-    @MainActor
-    func sendPrompt(completion: CompletionInstructionSD, model: LanguageModelSD)  {
-        guard let selectedText = selectedText, !isReady else { return }
-        let prompt = CompletionsPanelVM.constructPrompt(completion: completion, selectedText: selectedText)
-        
-        let messages: [OKChatRequestData.Message] = [
-            .init(role: .user, content: prompt)
-        ]
-        var request = OKChatRequestData(model: model.name, messages: messages)
-        request.options = OKCompletionOptions(temperature: completion.modelTemperature ?? 0.8)
-        currentMessageBuffer = ""
+
+    func sendPrompt(completion: CompletionInstructionSD, model: LanguageModelSD) {
+        guard let selectedText else { return }
+        cancel()
+        let prompt = Self.constructPrompt(completion: completion, selectedText: selectedText)
+        let request = UUID()
+        let modelID = model.requestModelID
+        let provider = model.modelProvider
+        let temperature = Float(completion.modelTemperature ?? 0.8)
+        requestID = request
+        isReady = true
         messageResponse = ""
-        
-        logger.info("request: \(request.messages)")
-        Task {
-            if await OllamaService.shared.ollamaKit.reachable() {
-                do {
-                    for try await response in OllamaService.shared.ollamaKit.chat(data: request) {
-                        self.handleReceive(response)
+        delivered = ""
+        receivedTokens = 0
+        generation = Task {
+            do {
+                _ = await sentenceQueue.dequeueAll()
+                let result = try await ChatGenerationService.generate(modelID: modelID, provider: provider,
+                    messages: [.init(role: "user", content: prompt)], preferences: preferences, temperature: temperature) { [self] text, count in
+                        Task { @MainActor in
+                            guard self.requestID == request, count > self.receivedTokens else { return }
+                            self.receivedTokens = count
+                            await self.receive(text, request: request)
+                        }
                     }
-                } catch {
-                    self.handleError(error.localizedDescription)
-                }
-                self.handleComplete()
-            } else {
-                self.handleError("Server unreachable")
+                try Task.checkCancellation()
+                guard requestID == request else { return }
+                await receive(result.text, request: request)
+                requestID = nil
+                generation = nil
+                isReady = false
+            } catch {
+                guard requestID == request else { return }
+                requestID = nil
+                generation = nil
+                isReady = false
+                if !(error is CancellationError) { AppStore.shared.uiLog(message: error.localizedDescription, status: .error) }
             }
         }
     }
-    
-    @MainActor
-    private func handleReceive(_ response: OKChatResponse)  {
-        Task {
-            if let responseContent = response.message?.content {
-                await sentenceQueue.enqueue(responseContent)
-                self.messageResponse = self.messageResponse + responseContent
-            }
-        }
+
+    private func receive(_ text: String, request: UUID) async {
+        guard requestID == request else { return }
+        messageResponse = AssistantMessageContent(text, streaming: true).answer
+        // Do not paste incomplete UTF-8 fragments emitted during token decoding.
+        var stable = messageResponse
+        while stable.last == "�" { stable.removeLast() }
+        guard stable.utf8.starts(with: delivered.utf8) else { return }
+        let delta = String(decoding: stable.utf8.dropFirst(delivered.utf8.count), as: UTF8.self)
+        delivered = stable
+        if !delta.isEmpty { await sentenceQueue.enqueue(delta) }
     }
-    
-    @MainActor
-    private func handleError(_ errorMessage: String) {
-        print("error \(errorMessage)")
-    }
-    
-    @MainActor
-    private func handleComplete() {
-        print("model response ", self.messageResponse)
-    }
-    
-    @MainActor
+
     func cancel() {
         generation?.cancel()
+        generation = nil
+        requestID = nil
+        isReady = false
     }
 }
-

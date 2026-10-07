@@ -34,7 +34,7 @@ struct SelectTextSheet: View {
                 .padding()
             }
             
-            TextEditor(text: .constant(message.content))
+            TextEditor(text: .constant(message.displayContent))
                 .focusable()
                 .focused($isTextEditorFocused)
                 .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { obj in

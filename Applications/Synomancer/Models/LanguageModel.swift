@@ -15,6 +15,8 @@ struct LanguageModel: Sendable {
 }
 
 enum ModelProvider: Codable, Sendable {
+    // Retained to decode previously saved conversations; no runtime backend.
     case ollama
     case mlx
+    case openai
 }

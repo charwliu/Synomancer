@@ -13,7 +13,7 @@ struct UnreachableAPIView: View {
     var body: some View {
         HStack {
             VStack {
-                Text("Ollama is unreachable. Go to Settings and update your Ollama API endpoint. ")
+                Text("No chat model is available. Choose HF_HOME for local MLX or configure OpenAI in Settings.")
                     .lineLimit(nil)
                     .minimumScaleFactor(0.5)
                     .fontWeight(.medium)
@@ -22,9 +22,8 @@ struct UnreachableAPIView: View {
             
             Spacer()
             
-            ProgressView().controlSize(.small)
-                 .frame(width: 21, height: 21)
-                 .padding(.horizontal)
+            Image(systemName: "externaldrive")
+                .padding(.horizontal)
             
             Button(action: {showSettings.toggle()}) {
                 Text("Settings")

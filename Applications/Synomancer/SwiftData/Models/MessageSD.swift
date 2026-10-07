@@ -38,6 +38,10 @@ final class MessageSD: Identifiable {
 }
 
 extension MessageSD {
+    var displayContent: String {
+        role == "user" || role == "system" ? content : AssistantMessageContent(content, streaming: !done).answer
+    }
+
     static var sample: [MessageSD] {
         [
             .init(content: "How many quarks there are in SM?", role: "user"),

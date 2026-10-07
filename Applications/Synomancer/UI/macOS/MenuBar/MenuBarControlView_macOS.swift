@@ -12,13 +12,18 @@ import SwiftUI
 
 struct MenuBarControlView: View {
     var notifications: [NotificationMessage]
+    var hasLocalModels: Bool
     var body: some View {
         VStack {
             Grid(horizontalSpacing: 12, verticalSpacing: 12) {
                 GridRow {
                     HStack {
-                        ControlView(icon: "checkmark.circle", title: "Ollama", subtitle: "Online")
-                        ControlView(icon: "x.circle", title: "Synomancer", subtitle: "Online")
+                        ControlView(
+                            icon: hasLocalModels ? "checkmark.circle" : "x.circle",
+                            title: "Chat models",
+                            subtitle: hasLocalModels ? "Ready" : "Select Model"
+                        )
+                        ControlView(icon: "checkmark.circle", title: "Synomancer", subtitle: "Online")
                     }
                     .padding(12)
                     .background {
@@ -50,6 +55,7 @@ struct MenuBarControlView: View {
             .padding(.top, 10)
         }
         .padding()
+        .frame(width: 360)
     }
     
     @ViewBuilder
@@ -78,18 +84,20 @@ struct MenuBarControlView: View {
 
 extension MenuBarControlView {
     static let icon: Image = {
-        let image: NSImage = {
-            let ratio = $0.size.height / $0.size.width
-            $0.size.height = 18
-            $0.size.width = 18 / ratio
-            return $0
-        }(NSImage(named: "logo-nobg")!)
-        
+        guard let image = NSImage(named: "logo-nobg")?.copy() as? NSImage,
+              image.size.width > 0, image.size.height > 0 else {
+            return Image(systemName: "sparkles")
+        }
+        let aspectRatio = image.size.width / image.size.height
+        image.size = NSSize(width: 18 * aspectRatio, height: 18)
+        image.isTemplate = false
+
         return Image(nsImage: image)
     }()
 }
 
 #Preview {
-    MenuBarControlView(notifications: NotificationMessage.sample)
+    MenuBarControlView(notifications: NotificationMessage.sample, hasLocalModels: true)
 }
+
 #endif

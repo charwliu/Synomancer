@@ -60,7 +60,7 @@ extension Database {
     }
     
     public func first<T: PersistentModel>(_ selectPredicate: Predicate<T>) async throws -> ModelID<T>? {
-        try await self.first(selectPredicate, with: ModelID.ifMap)
+        try await self.first(selectPredicate) { ModelID<T>.ifMap($0) }
     }
     
     public func first<T: PersistentModel, U: Sendable>(

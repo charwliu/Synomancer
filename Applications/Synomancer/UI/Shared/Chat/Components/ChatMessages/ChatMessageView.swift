@@ -17,7 +17,6 @@ struct ChatMessageView: View {
     var userInitials: String
     @Binding var editMessage: MessageSD?
     @State private var mouseHover = false
-    @State private var isSpeaking = false
     
     var roleName: String  {
         let userInitialsNotEmpty = userInitials != "" ? userInitials : "AM"
@@ -49,7 +48,13 @@ struct ChatMessageView: View {
                 .offset(CGSize(width: 0, height: 6))
                 
                 VStack(alignment: .leading) {
-                    NativeMarkdownView(content: message.content)
+                    Group {
+                        if message.role == "user" {
+                            NativeMarkdownView(content: message.content)
+                        } else {
+                            AssistantResponseView(content: message.content, streaming: showLoader)
+                        }
+                    }
 #if os(macOS)
                         .textSelection(.enabled)
 #endif
@@ -75,7 +80,7 @@ struct ChatMessageView: View {
 #if os(macOS)
             HStack(spacing: 0) {
                 /// Copy button
-                Button(action: {Clipboard.shared.setString(message.content)}) {
+                Button(action: {Clipboard.shared.setString(message.displayContent)}) {
                     Image(systemName: "doc.on.doc")
                         .padding(8)
                 }
@@ -85,11 +90,7 @@ struct ChatMessageView: View {
                 /// Play button
                 Button(action: {
                     Task {
-                        await speechSynthesizer.stopSpeaking()
-                        await speechSynthesizer.speak(text: message.content, onFinished: { isSpeaking = false })
-                        DispatchQueue.main.asyncAfter(deadline: .now()+0.1) {
-                            isSpeaking = true
-                        }
+                        await speechSynthesizer.speak(text: message.displayContent)
                     }
                 }) {
                     Image(systemName: "speaker.wave.2.fill")
@@ -98,22 +99,7 @@ struct ChatMessageView: View {
                 }
                 .buttonStyle(GrowingButton())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-                .showIf(!isSpeaking)
-                
-                /// Stop button
-                Button(action: {
-                    Task {
-                        isSpeaking = false
-                        await speechSynthesizer.stopSpeaking()
-                    }
-                }) {
-                    Image(systemName: "speaker.slash.fill")
-                        .frame(width: 10)
-                        .padding(8)
-                }
-                .buttonStyle(GrowingButton())
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .showIf(isSpeaking)
+                .disabled(message.displayContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 
                 /// Edit button
                 Button(action: {editMessage = message}) {

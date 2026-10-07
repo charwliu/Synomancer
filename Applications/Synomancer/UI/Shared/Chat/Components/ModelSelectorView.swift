@@ -20,7 +20,7 @@ struct ModelSelectorView: View {
                         onSelectModel(model)
                     }
                 }) {
-                    Text(model.name)
+                    Text(model.displayName)
                         .font(.body)
                         .tag(model.name)
                 }
@@ -31,7 +31,7 @@ struct ModelSelectorView: View {
                     HStack(alignment: .bottom, spacing: 5) {
                         
                         #if os(macOS) || os(visionOS)
-                        Text(selectedModel.name)
+                        Text(selectedModel.displayName)
                             .font(.body)
                         #elseif os(iOS)
                         Text(selectedModel.prettyName )

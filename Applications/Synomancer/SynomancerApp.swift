@@ -42,7 +42,6 @@ struct SynomancerApp: App {
 #endif
         
 #if os(macOS)
-#if false
         MenuBarExtra {
             MenuBarControl()
         } label: {
@@ -53,7 +52,6 @@ struct SynomancerApp: App {
             }
         }
         .menuBarExtraStyle(.window)
-#endif
 #endif
     }
 }

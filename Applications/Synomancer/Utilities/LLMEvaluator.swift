@@ -8,7 +8,6 @@
 @preconcurrency import CoreImage
 import MLX
 import MLXLMCommon
-import MLXRandom
 import MLXVLM
 import SwiftUI
 
@@ -44,18 +43,17 @@ class LLMEvaluator {
     func load() async throws -> ModelContainer {
         switch loadState {
         case .idle:
-            // limit the buffer cache
-            MLX.Memory.cacheLimit = 20 * 1024 * 1024
-            
-            let modelContainer = try await VLMModelFactory.shared.loadContainer(
-                configuration: modelConfiguration
-            ) { [modelConfiguration] progress in
-                Task { @MainActor in
-                    self.modelInfo =
-                    "Downloading \(modelConfiguration.name): \(Int(progress.fractionCompleted * 100))%"
-                }
+            let cache = try await SpeechCacheAccess.authorizedConfiguration()
+            let models = try await LocalChatService.shared.models(cache: cache)
+            let id = "mlx-community/Qwen2-VL-2B-Instruct-4bit"
+            guard let model = models.first(where: { $0.id == id }) else {
+                throw LocalChatService.ChatError.modelUnavailable(id)
             }
-            
+            let root = try cache.resolve()
+            let accessing = root.startAccessingSecurityScopedResource()
+            defer { if accessing { root.stopAccessingSecurityScopedResource() } }
+            let modelContainer = try await VLMModelFactory.shared.loadContainer(
+                from: model.directory, using: LocalChatTokenizerLoader())
             let numParams = await modelContainer.perform { context in
                 context.model.numParameters()
             }
@@ -78,9 +76,8 @@ class LLMEvaluator {
         do {
             let modelContainer = try await load()
             
-            // each time you generate you will get something new
-            MLXRandom.seed(UInt64(Date.timeIntervalSinceReferenceDate * 1000))
-            
+            let parameters = GenerateParameters(maxTokens: maxTokens, temperature: generateParameters.temperature)
+            let cadence = displayEveryNTokens
             let result = try await modelContainer.perform { context in
                 let images: [UserInput.Image] =
                 if let image {
@@ -113,30 +110,39 @@ class LLMEvaluator {
                 
                 let input = try await context.processor.prepare(input: userInput)
                 
-                return try MLXLMCommon.generate(
-                    input: input,
-                    parameters: generateParameters,
-                    context: context
-                ) { tokens in
-                    // update the output -- this will make the view show the text as it generates
-                    if tokens.count % displayEveryNTokens == 0 {
-                        let text = context.tokenizer.decode(tokens: tokens)
-                        Task { @MainActor in
-                            self.output = text
+                let (events, worker) = try MLXLMCommon.generateTokensTask(
+                    input: input, parameters: parameters, context: context)
+                return try await withTaskCancellationHandler {
+                    var tokens: [Int] = []
+                    var info: GenerateCompletionInfo?
+                    do {
+                        for await event in events {
+                            try Task.checkCancellation()
+                            switch event {
+                            case .token(let token):
+                                tokens.append(token)
+                                if tokens.count % cadence == 0 {
+                                    let text = context.tokenizer.decode(tokenIds: tokens)
+                                    Task { @MainActor in self.output = text }
+                                }
+                            case .info(let completion): info = completion
+                            }
                         }
+                        await worker.value
+                        try Task.checkCancellation()
+                        return LocalChatResult(text: context.tokenizer.decode(tokenIds: tokens),
+                                               tokensPerSecond: info?.tokensPerSecond ?? 0)
+                    } catch {
+                        worker.cancel()
+                        await worker.value
+                        throw error
                     }
-                    
-                    if tokens.count >= maxTokens {
-                        return .stop
-                    } else {
-                        return .more
-                    }
-                }
+                } onCancel: { worker.cancel() }
             }
             
             // update the text if needed, e.g. we haven't displayed because of displayEveryNTokens
-            if result.output != self.output {
-                self.output = result.output
+            if result.text != self.output {
+                self.output = result.text
             }
             self.stat = " Tokens/second: \(String(format: "%.3f", result.tokensPerSecond))"
             

@@ -7,6 +7,16 @@
     "%.2f" : {
       "shouldTranslate" : false
     },
+    "%@ · %lld×%lld · 超分耗时 %@ 秒" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld×%3$lld · 超分耗时 %4$@ 秒"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "zh-Hans" : {
@@ -54,6 +64,9 @@
     "+" : {
 
     },
+    "×" : {
+
+    },
     "About" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -86,10 +99,25 @@
     "Accounts" : {
 
     },
+    "API" : {
+
+    },
+    "API Base URL" : {
+
+    },
+    "API Key" : {
+
+    },
+    "API Models" : {
+
+    },
     "APP" : {
 
     },
     "Appearance" : {
+
+    },
+    "Apply OpenAI Settings" : {
 
     },
     "Are you sure you want to delete '%@'?" : {
@@ -121,7 +149,10 @@
         }
       }
     },
-    "Bearer Token" : {
+    "Automatic" : {
+
+    },
+    "Automatic (Chinese / English)" : {
 
     },
     "Blur" : {
@@ -181,6 +212,12 @@
         }
       }
     },
+    "Chat Completions (compatible)" : {
+
+    },
+    "Chat Models" : {
+
+    },
     "Check for updates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -238,6 +275,15 @@
           }
         }
       }
+    },
+    "Chinese" : {
+
+    },
+    "Choose API Models…" : {
+
+    },
+    "Choose HF_HOME Folder…" : {
+
     },
     "Clear" : {
       "extractionState" : "manual",
@@ -687,6 +733,9 @@
     "Edit" : {
 
     },
+    "Enable OpenAI models" : {
+
+    },
     "Endpoint" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -715,6 +764,12 @@
           }
         }
       }
+    },
+    "Endpoints: GET /models, POST /chat/completions (streaming supported)." : {
+
+    },
+    "English" : {
+
     },
     "Enter Full Screen" : {
       "extractionState" : "stale",
@@ -842,6 +897,9 @@
         }
       }
     },
+    "Generate Access Token" : {
+
+    },
     "Generate Time" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -900,6 +958,9 @@
         }
       }
     },
+    "Generating Local Speech…" : {
+
+    },
     "GPU Cache Limit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -932,6 +993,15 @@
     "hello" : {
 
     },
+    "HF_HOME" : {
+
+    },
+    "HF_HOME 中尚未找到 Qwen-Image-2.1-Fun-Controlnet-Union 权重。" : {
+
+    },
+    "HF_HOME 中尚未找到 RealESRGAN_x4plus 超分模型。" : {
+
+    },
     "How can I help today?" : {
 
     },
@@ -940,6 +1010,9 @@
     },
     "https://huggingface.co" : {
       "shouldTranslate" : false
+    },
+    "Hugging Face" : {
+
     },
     "Hugging Face Endpoint" : {
       "extractionState" : "stale",
@@ -1040,6 +1113,9 @@
     "Instruction Prompt gets appended before the selected text and together sent to the LLM." : {
 
     },
+    "Keep temperature disabled for models that do not support it." : {
+
+    },
     "Keyboard shortcut" : {
 
     },
@@ -1050,7 +1126,6 @@
 
     },
     "Language" : {
-      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -1077,6 +1152,33 @@
           }
         }
       }
+    },
+    "Listening on localhost only. Use the access token as the client API key. The server exposes local models and does not forward requests to OpenAI. Restart after changing HF_HOME. While enabled, it starts again when Synomancer opens." : {
+
+    },
+    "Loading…" : {
+
+    },
+    "Local API Access Token" : {
+
+    },
+    "Local Chat Temperature" : {
+
+    },
+    "Local MLX API" : {
+
+    },
+    "Local Qwen3-TTS 1.7B" : {
+
+    },
+    "Local voice input" : {
+
+    },
+    "Local Voice Input" : {
+
+    },
+    "Local voice input — Qwen3-ASR 1.7B" : {
+
     },
     "Max Length" : {
       "extractionState" : "stale",
@@ -1226,6 +1328,9 @@
         }
       }
     },
+    "Model IDs (one per line)" : {
+
+    },
     "Model Settings" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1313,6 +1418,15 @@
         }
       }
     },
+    "Models are loaded directly from HF_HOME on this device." : {
+
+    },
+    "MTP can produce a different continuation from ordinary greedy generation. Turn it off when exact reproducibility matters." : {
+
+    },
+    "MTP uses a compatible Qwen model’s local draft weights at temperature 0. Other models and temperatures use ordinary generation. Completion shortcuts and API requests keep their own temperature." : {
+
+    },
     "Name" : {
 
     },
@@ -1379,6 +1493,12 @@
         }
       }
     },
+    "No chat model found. Choose HF_HOME or configure OpenAI." : {
+
+    },
+    "No chat model is available. Choose HF_HOME for local MLX or configure OpenAI in Settings." : {
+
+    },
     "No Conversation" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1437,13 +1557,7 @@
         }
       }
     },
-    "Ollama" : {
-
-    },
-    "Ollama is unreachable. Go to Settings and update your Ollama API endpoint. " : {
-
-    },
-    "Ollama server URI" : {
+    "OK" : {
 
     },
     "Only single character keyboard shortcuts allowed." : {
@@ -1455,7 +1569,10 @@
     "Open Settings" : {
 
     },
-    "Ping Interval (seconds)" : {
+    "OpenAI" : {
+
+    },
+    "OpenAI Responses" : {
 
     },
     "Please enter Hugging Face Repo ID" : {
@@ -1516,6 +1633,9 @@
         }
       }
     },
+    "Port" : {
+
+    },
     "Preferences and model settings" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1544,6 +1664,9 @@
           }
         }
       }
+    },
+    "Preparing Qwen3-ASR 1.7B from HF_HOME" : {
+
     },
     "Prompt Time" : {
       "extractionState" : "stale",
@@ -1603,10 +1726,19 @@
         }
       }
     },
+    "Qwen-Image-2.1 · Swift + MLX · 本地 HF_HOME" : {
+
+    },
+    "Qwen3-ASR 1.7B" : {
+
+    },
     "Read Aloud" : {
 
     },
     "Reading Aloud" : {
+
+    },
+    "Refresh Models" : {
 
     },
     "Regenerate" : {
@@ -1731,6 +1863,9 @@
     "Respond in current **Window**." : {
 
     },
+    "Running: http://127.0.0.1:%u/v1" : {
+
+    },
     "Save" : {
 
     },
@@ -1795,6 +1930,12 @@
     "Select Text" : {
 
     },
+    "Select text generation models to add to the chat menu." : {
+
+    },
+    "Selecting an OpenAI model sends conversation text to the configured API. Local MLX remains available." : {
+
+    },
     "Send" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1823,6 +1964,12 @@
           }
         }
       }
+    },
+    "Send temperature parameter" : {
+
+    },
+    "Serve local MLX text models to OpenAI-compatible clients on this Mac." : {
+
     },
     "Settings" : {
       "extractionState" : "manual",
@@ -1860,6 +2007,27 @@
 
     },
     "SPACE" : {
+
+    },
+    "Speaker" : {
+
+    },
+    "Speech Model" : {
+
+    },
+    "Start Local API" : {
+
+    },
+    "Starting…" : {
+
+    },
+    "Stop Local API" : {
+
+    },
+    "Stop Reading Aloud" : {
+
+    },
+    "Stop recording" : {
 
     },
     "Synomancer" : {
@@ -1933,6 +2101,9 @@
         }
       }
     },
+    "System Voice" : {
+
+    },
     "TAB" : {
 
     },
@@ -1967,7 +2138,10 @@
         }
       }
     },
-    "This model does not support images. Supported models are llava and bakllava." : {
+    "The API key is saved in Keychain. Model availability depends on your API account; choose a model that supports text generation." : {
+
+    },
+    "This model does not support images. Supported models are llava, bakllava and llama vision." : {
 
     },
     "Title" : {
@@ -2095,6 +2269,12 @@
         }
       }
     },
+    "Use Default HF_HOME" : {
+
+    },
+    "Use Local Qwen MTP" : {
+
+    },
     "Use Max Length" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2211,6 +2391,15 @@
         }
       }
     },
+    "Use Temperature 0 for MTP" : {
+
+    },
+    "Uses CustomVoice model and speech-tokenizer weights from the shared HF_HOME cache. No automatic model download." : {
+
+    },
+    "Uses the shared HF_HOME cache. BF16 decoder weights are quantized to 4bit in memory; cached files stay unchanged." : {
+
+    },
     "Version %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2244,6 +2433,9 @@
 
     },
     "Voice" : {
+
+    },
+    "Voice Input" : {
 
     },
     "Warning" : {
@@ -2308,6 +2500,200 @@
       }
     },
     "Your Command" : {
+
+    },
+    "下载 Apple 超分模型" : {
+
+    },
+    "使用参考照片" : {
+
+    },
+    "保存 PNG…" : {
+
+    },
+    "保存控制图…" : {
+
+    },
+    "停止" : {
+
+    },
+    "关闭" : {
+
+    },
+    "刷新" : {
+
+    },
+    "启用控制图后按结构生成照片；参考照片用于提取深度或姿态。提示词请描述完整目标画面。" : {
+
+    },
+    "回答完成后自动朗读正式答案" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答完成后自动朗读正式答案"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答完成後自動朗讀正式答案"
+          }
+        }
+      }
+    },
+    "图像生成与编辑" : {
+
+    },
+    "图片描述或编辑指令" : {
+
+    },
+    "始终从生成原图超分，建议使用 1024 原图。4K 按原比例输出长边 3840 像素；保存 PNG 导出当前显示的版本。" : {
+
+    },
+    "尺寸" : {
+
+    },
+    "当前系统或设备不支持 Apple 图片超分，请选择 RealESRGAN。" : {
+
+    },
+    "思考" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "思考"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "思考"
+          }
+        }
+      }
+    },
+    "思考中..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "思考中..."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "思考中..."
+          }
+        }
+      }
+    },
+    "按控制图生成" : {
+
+    },
+    "控制图处理" : {
+
+    },
+    "控制强度 %@" : {
+
+    },
+    "控制结束 %@" : {
+
+    },
+    "描述对参考照片的修改…" : {
+
+    },
+    "描述想生成的照片…" : {
+
+    },
+    "显示超分结果" : {
+
+    },
+    "本地图像" : {
+
+    },
+    "本地模型" : {
+
+    },
+    "正在停止…" : {
+
+    },
+    "步数 %lld" : {
+
+    },
+    "深度提取需要 HF_HOME 中的 apple/coreml-depth-anything-v2-small 模型。" : {
+
+    },
+    "生成照片" : {
+
+    },
+    "移除参考照片" : {
+
+    },
+    "移除控制图" : {
+
+    },
+    "继续编辑这张图" : {
+
+    },
+    "编辑照片" : {
+
+    },
+    "耗时 %@ 秒 · Seed %llu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "耗时 %1$@ 秒 · Seed %2$llu"
+          }
+        }
+      }
+    },
+    "聊天、图像、ASR 和 TTS 共用此缓存。选择一次文件夹以授予访问权限；支持 huggingface 或 hub 根目录。" : {
+
+    },
+    "自动朗读" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动朗读"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動朗讀"
+          }
+        }
+      }
+    },
+    "超分后端" : {
+
+    },
+    "超分生成图" : {
+
+    },
+    "输入描述生成照片，或选择照片并输入编辑指令。" : {
+
+    },
+    "输出尺寸" : {
+
+    },
+    "选择参考照片…" : {
+
+    },
+    "选择控制图或照片…" : {
+
+    },
+    "随机种子" : {
+
+    },
+    "首次使用需下载 Apple 系统模型；准备完成后在本地处理。" : {
+
+    },
+    "高度" : {
 
     }
   },

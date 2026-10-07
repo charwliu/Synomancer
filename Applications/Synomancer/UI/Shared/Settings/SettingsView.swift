@@ -11,22 +11,22 @@ import AVFoundation
 
 struct SettingsView: View {
     @Environment(\.presentationMode) var presentationMode
-    @Binding var ollamaUri: String
     @Binding var systemPrompt: String
     @Binding var vibrations: Bool
     @Binding var colorScheme: AppColorScheme
-    @Binding var defaultOllamModel: String
-    @Binding var ollamaBearerToken: String
+    @Binding var defaultModel: String
     @Binding var appUserInitials: String
-    @Binding var pingInterval: String
     @Binding var voiceIdentifier: String
-    @State var ollamaStatus: Bool?
+    @Binding var openAIKey: String
     var save: () -> ()
-    var checkServer: () -> ()
+    var refreshModels: () -> ()
     var deleteAll: () -> ()
-    var ollamaLangugeModels: [LanguageModelSD]
+    var localModels: [LanguageModelSD]
     var voices: [AVSpeechSynthesisVoice]
     
+    @AppStorage("speechBackend") private var speechBackend = "system"
+    @AppStorage(LocalQwenMTP.enabledKey) private var mtpEnabled = true
+    @AppStorage(LocalQwenMTP.temperatureKey) private var localTemperature = 0.6
     @State private var deleteConversationsDialog = false
     
     var body: some View {
@@ -63,18 +63,31 @@ struct SettingsView: View {
             .padding()
             
             Form {
-                Section(header: Text("Ollama").font(.headline)) {
+                HuggingFaceSettings()
+                LocalSpeechSettings()
+                LocalTTSSettings()
+                OpenAISettings(refreshModels: refreshModels, apiKey: $openAIKey)
+                LocalChatAPISettings()
+                Section(header: Text("Chat Models").font(.headline)) {
                     
-                    TextField("Ollama server URI", text: $ollamaUri, onCommit: checkServer)
-                        .textContentType(.URL)
-                        .disableAutocorrection(true)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-#if !os(macOS)
-                        .padding(.top, 8)
-                        .keyboardType(.URL)
-                        .autocapitalization(.none)
-#endif
-                    
+                    Button("Refresh Models", action: refreshModels)
+                    Text("Models are loaded directly from HF_HOME on this device.")
+                        .font(.caption).foregroundStyle(.secondary)
+
+                    Toggle("Use Local Qwen MTP", isOn: $mtpEnabled)
+                    HStack {
+                        Text("Local Chat Temperature")
+                        Slider(value: $localTemperature, in: 0...2, step: 0.1)
+                        Text(localTemperature, format: .number.precision(.fractionLength(1)))
+                            .monospacedDigit()
+                    }
+                    Button("Use Temperature 0 for MTP") { localTemperature = 0 }
+                    Text("MTP uses a compatible Qwen model’s local draft weights at temperature 0. Other models and temperatures use ordinary generation. Completion shortcuts and API requests keep their own temperature.")
+                        .font(.caption).foregroundStyle(.secondary)
+
+                    Text("MTP can produce a different continuation from ordinary greedy generation. Turn it off when exact reproducibility matters.")
+                        .font(.caption).foregroundStyle(.secondary)
+
                     VStack(alignment: .leading) {
                         Text("System prompt")
                         TextEditor(text: $systemPrompt)
@@ -84,34 +97,19 @@ struct SettingsView: View {
                             .frame(minHeight: 100)
                     }
                     
-                    Picker(selection: $defaultOllamModel) {
-                        ForEach(ollamaLangugeModels, id:\.self) { model in
-                            Text(model.name).tag(model.name)
-                        }
-                    } label: {
-                        Label {
-                            Text("Default Model")
-                        } icon: {
-                            Image("ollama")
-                                .renderingMode(.template)
-                                .resizable()
-                                .scaledToFit()
-                                .foregroundColor(Color(.label))
-                                .frame(width: 24, height: 24)
+                    if localModels.isEmpty {
+                        Text("No chat model found. Choose HF_HOME or configure OpenAI.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker(selection: $defaultModel) {
+                            ForEach(localModels, id: \.self) { model in
+                                Text(model.displayName).tag(model.name)
+                            }
+                        } label: {
+                            Label("Default Model", systemImage: "cpu")
                         }
                     }
-                    
-                    
-                    TextField("Bearer Token", text: $ollamaBearerToken)
-                        .disableAutocorrection(true)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-#if os(iOS)
-                        .autocapitalization(.none)
-#endif
-                    TextField("Ping Interval (seconds)", text: $pingInterval)
-                        .disableAutocorrection(true)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
+
                     Section(header: Text("APP").font(.headline).padding(.top, 20)) {
                         
 #if os(iOS)
@@ -164,8 +162,8 @@ struct SettingsView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
-                    
-                    
+                    .showIf(speechBackend == "system")
+
                     TextField("Initials", text: $appUserInitials)
                         .disableAutocorrection(true)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -201,19 +199,17 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView(
-        ollamaUri: .constant(""),
         systemPrompt: .constant("You are an intelligent assistant solving complex problems. You are an intelligent assistant solving complex problems. You are an intelligent assistant solving complex problems."),
         vibrations: .constant(true),
         colorScheme: .constant(.light),
-        defaultOllamModel: .constant("llama2"),
-        ollamaBearerToken: .constant("x"),
+        defaultModel: .constant("mlx-community/Qwen2-VL-2B-Instruct-4bit"),
         appUserInitials: .constant("AM"),
-        pingInterval: .constant("5"),
         voiceIdentifier: .constant("sample"),
+        openAIKey: .constant(""),
         save: {},
-        checkServer: {},
+        refreshModels: {},
         deleteAll: {},
-        ollamaLangugeModels: LanguageModelSD.sample,
+        localModels: LanguageModelSD.sample,
         voices: []
     )
 }

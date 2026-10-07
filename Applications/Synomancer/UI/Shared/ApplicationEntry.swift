@@ -17,6 +17,7 @@ import SwiftData
 
 struct ApplicationEntry: View {
     @AppStorage("colorScheme") private var colorScheme: AppColorScheme = .system
+    @AppStorage(AutomaticResponseSpeech.enabledKey) private var automaticReadAloud = false
     @State private var languageModelStore = LanguageModelStore.shared
     @State private var conversationStore = ConversationStore.shared
     @State private var completionsStore = CompletionsStore.shared
@@ -32,6 +33,11 @@ struct ApplicationEntry: View {
             }
         }
         .task {
+            if conversationStore.automaticSpeech == nil {
+                conversationStore.automaticSpeech = AutomaticResponseSpeech(preferences: .standard,
+                    speak: { await SpeechSynthesizer.shared.speak(text: $0) },
+                    stop: { await SpeechSynthesizer.shared.stopSpeaking() })
+            }
             
             if let bundleIdentifier = Bundle.main.bundleIdentifier {
                 print("Bundle Identifier: \(bundleIdentifier)")
@@ -39,6 +45,7 @@ struct ApplicationEntry: View {
                 print("Bundle Identifier not found.")
             }
             
+            await LocalChatAPIServer.shared.restore()
             completionsStore.load()
             Task {
                 async let loadModels: () = languageModelStore.loadModels()
@@ -48,10 +55,13 @@ struct ApplicationEntry: View {
                     _ = try await loadModels
                     _ = try await loadConversations
                 } catch {
-                    print("Unexpected error: \(error).")
+                    AppStore.shared.uiLog(message: error.localizedDescription, status: .error)
                 }
             }
         }
         .preferredColorScheme(colorScheme.toiOSFormat)
+        .onChange(of: automaticReadAloud) { _, enabled in
+            if !enabled { conversationStore.automaticSpeech?.cancel() }
+        }
     }
 }

@@ -13,7 +13,13 @@ import SwiftUI
 struct MenuBarControl: View {
     @State private var appStore = AppStore.shared
     var body: some View {
-        MenuBarControlView(notifications: appStore.notifications)
+        MenuBarControlView(
+            notifications: appStore.notifications,
+            hasLocalModels: appStore.isReachable
+        )
+        .task {
+            try? await LanguageModelStore.shared.loadModels()
+        }
     }
 }
 #endif

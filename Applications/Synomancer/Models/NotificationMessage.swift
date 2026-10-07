@@ -23,7 +23,7 @@ struct NotificationMessage: Identifiable {
 // MARK: Sample data
 extension NotificationMessage {
     static let sample: [NotificationMessage] = [
-        .init(message: "Querying ollama", status: .info),
+        .init(message: "Loading local MLX model", status: .info),
         .init(message: "Window changed. Stopping writing.", status: .info)
     ]
 }

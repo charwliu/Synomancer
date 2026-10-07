@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Synomancer records your voice and transcribes it locally using Qwen3-ASR.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -30,8 +37,8 @@
 			<string>Beancount Ledger</string>
 			<key>UTTypeIcons</key>
 			<dict>
-                <key>UTTypeIconBadgeName</key>
-                <string>FileIcon</string>
+				<key>UTTypeIconBadgeName</key>
+				<string>FileIcon</string>
 				<key>UTTypeIconText</key>
 				<string>beancount</string>
 			</dict>

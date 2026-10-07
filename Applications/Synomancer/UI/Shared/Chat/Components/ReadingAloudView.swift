@@ -9,6 +9,8 @@
 import SwiftUI
 
 struct ReadingAloudView: View {
+    var isGenerating = false
+    var generationStatus = "Generating Local Speech…"
     var onStopTap: () -> ()
     @State private var animationsRunning = false
     
@@ -20,7 +22,7 @@ struct ReadingAloudView: View {
                 .scaledToFit()
                 .frame(width: 18)
             
-            Text("Reading Aloud")
+            Text(isGenerating ? generationStatus : "Reading Aloud")
                 .font(.system(size: 14))
             
             Spacer()
@@ -31,6 +33,8 @@ struct ReadingAloudView: View {
                     .padding(5)
             }
             .buttonStyle(GrowingButton())
+            .help("Stop Reading Aloud")
+            .accessibilityLabel("Stop Reading Aloud")
             
         }
         .padding(.horizontal)

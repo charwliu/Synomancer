@@ -112,6 +112,8 @@ struct ChatView: View {
             
             Spacer()
             
+            AutomaticReadAloudToggle()
+
             Button(action: onNewConversationTap) {
                 Image(systemName: "square.and.pencil")
                     .renderingMode(.template)

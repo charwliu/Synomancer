@@ -14,7 +14,7 @@ struct Chat: View, Sendable {
     @State private var appStore: AppStore
     @AppStorage("systemPrompt") private var systemPrompt: String = ""
     @AppStorage("appUserInitials") private var userInitials: String = ""
-    @AppStorage("defaultOllamaModel") private var defaultOllamaModel: String = ""
+    @AppStorage("defaultMLXModel") private var defaultMLXModel: String = ""
     @State var showMenu = false
     
     init(languageModelStore: LanguageModelStore, conversationStore: ConversationStore, appStore: AppStore) {
@@ -35,8 +35,8 @@ struct Chat: View, Sendable {
     @MainActor
     func updateSelectedModel() {
         if languageModelStore.selectedModel == nil {
-            if defaultOllamaModel != "" {
-                languageModelStore.setModel(modelName: defaultOllamaModel)
+            if defaultMLXModel != "" {
+                languageModelStore.setModel(modelName: defaultMLXModel)
             } else {
                 languageModelStore.setModel(model: languageModelStore.models.first)
             }
@@ -84,6 +84,7 @@ struct Chat: View, Sendable {
     }
     
     func newConversation() {
+        conversationStore.stopGenerate()
         DispatchQueue.main.async {
             withAnimation(.easeOut(duration: 0.3)) {
                 self.conversationStore.selectedConversation = nil
