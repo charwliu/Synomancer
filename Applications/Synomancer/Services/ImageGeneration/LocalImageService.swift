@@ -53,6 +53,26 @@ actor LocalImageService {
         let control: MLXArray?
     }
     private var conditioning: Conditioning?
+    private struct DenoisingPrefix {
+        let key: ConditioningKey
+        let layers: [(MLXArray, MLXArray)]
+    }
+    private var denoisingPrefix: DenoisingPrefix?
+    private var cacheRevision = 0
+    private let prefixCacheLimit: UInt64
+
+    init(prefixCacheLimit: UInt64? = nil) {
+        self.prefixCacheLimit = prefixCacheLimit
+            ?? min(ProcessInfo.processInfo.physicalMemory / 64, 2 * 1024 * 1024 * 1024)
+    }
+
+    /// Release image-session caches when its UI is dismissed. In-flight work
+    /// may finish, but cannot repopulate a cache cleared during an await.
+    func clearSessionCache() {
+        cacheRevision += 1
+        conditioning = nil
+        denoisingPrefix = nil
+    }
 
     func models(cache: SpeechCacheAccess.Configuration) throws -> [LocalImageModel] {
         let root = try cache.resolve()
@@ -83,6 +103,7 @@ actor LocalImageService {
         }
         try Task.checkCancellation()
         busy = true
+        let requestCacheRevision = cacheRevision
         defer { busy = false }
         let root = try cache.resolve()
         let access = root.startAccessingSecurityScopedResource()
@@ -137,6 +158,7 @@ actor LocalImageService {
             prepared = cached
         } else {
             conditioning = nil
+            denoisingPrefix = nil
             let reference = try referenceData.map {
                 try Self.referenceImage($0, width: request.width, height: request.height)
             }
@@ -166,7 +188,7 @@ actor LocalImageService {
                 reference: referenceLatent, control: controlContext)
             // One entry, bounded to at most 64 MiB even for FP32 conditioning.
             let elements = features.size + (referenceLatent?.size ?? 0) + (controlContext?.size ?? 0)
-            if elements <= 16 * 1024 * 1024 { conditioning = prepared }
+            if elements <= 16 * 1024 * 1024 && requestCacheRevision == cacheRevision { conditioning = prepared }
         }
         let features = prepared.features
         let dtype = features.dtype
@@ -179,7 +201,13 @@ actor LocalImageService {
         var latents = MLXRandom.normal([1, height * width, 64], dtype: dtype, key: MLXRandom.key(request.seed))
         let sigmas = try Self.sigmas(steps: request.steps, tokens: height * width,
             config: LocalImageModelCache.json(directory.appendingPathComponent("scheduler/scheduler_config.json")))
+        // Text/reference prefix states are independent of seed and timestep.
+        // ControlNet prefixes also depend on its schedule, so keep those local.
         var prefixCache: [(MLXArray, MLXArray)] = []
+        if control == nil, let saved = denoisingPrefix, saved.key == key {
+            prefixCache = saved.layers
+            progress("复用文本和参考图去噪缓存…", 0.045)
+        }
         var controlCache: [(MLXArray, MLXArray)] = []
         var previousControlEnabled = false
         for step in 0..<request.steps {
@@ -202,6 +230,15 @@ actor LocalImageService {
             latents = Self.eulerStep(latents, prediction: prediction,
                 delta: sigmas[step + 1] - sigmas[step])
             eval(latents)
+        }
+        if control == nil && requestCacheRevision == cacheRevision {
+            let bytes = prefixCache.reduce(0) { $0 + $1.0.nbytes + $1.1.nbytes }
+            if bytes <= prefixCacheLimit {
+                // Materialize slices before caching, so they retain only prefix
+                // data, not a lazy graph involving the entire denoising request.
+                eval(prefixCache.flatMap { [$0.0, $0.1] })
+                denoisingPrefix = DenoisingPrefix(key: key, layers: prefixCache)
+            } else { denoisingPrefix = nil }
         }
         prefixCache.removeAll()
         controlCache.removeAll()

@@ -131,7 +131,10 @@ struct ImageStudioView: View {
         .onChange(of: store.controlKind) { _, _ in store.refreshControl() }
         .onChange(of: store.width) { _, _ in store.refreshControl() }
         .onChange(of: store.height) { _, _ in store.refreshControl() }
-        .onDisappear { store.stop() }
+        .onDisappear {
+            store.stop()
+            Task { await LocalImageService.shared.clearSessionCache() }
+        }
     }
 
     private var upscaleOptions: some View {

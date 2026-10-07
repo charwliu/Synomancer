@@ -21,6 +21,8 @@ parser.add_argument('--image', action='store_true', help='Generate and edit actu
 parser.add_argument('--image-parity', action='store_true', help='Compare native image components against CPU Diffusers fixtures')
 parser.add_argument('--image-checks', action='store_true', help='Test cache completeness and native image cancellation/restart')
 parser.add_argument('--image-size', type=int, choices=[512, 768, 1024], default=512, help='Square size for actual image generation/editing')
+parser.add_argument('--image-prefix-benchmark', action='store_true', help='With --image and --image-reference: ABBA comparison of warmed prefix reuse')
+parser.add_argument('--image-repeat', action='store_true', help='Repeat editing with identical inputs to verify conditioning reuse')
 parser.add_argument('--image-output', type=Path, help='Directory for image artifacts and benchmark comparisons')
 parser.add_argument('--image-reference', type=Path, help='Edit this existing photo instead of generating the initial red mug')
 parser.add_argument('--image-prompt', help='Override the editing instruction when using --image-reference')
@@ -47,8 +49,8 @@ checkouts = (args.source_packages or (args.derived_data / 'SourcePackages')).res
 maps = args.derived_data.resolve() / 'Build/Intermediates.noindex/GeneratedModuleMaps'
 objects = '''Qwen3TTS Qwen3ASR AudioCommon MLXCommon MLXFFT MLX MLXNN MLXFast
 Cmlx cLogSupport Numerics ComplexModule RealModule _NumericsShims Hub Tokenizers
-Jinja OrderedCollections DequeModule InternalCollectionsUtilities yyjson Models
-Generation HuggingFace Crypto Logging EventSource'''.split()
+Jinja OrderedCollections DequeModule InternalCollectionsUtilities yyjson
+HuggingFace Crypto Logging EventSource'''.split()
 executable = products / 'SynomancerASRSmoke'
 sdk = subprocess.check_output(['xcrun', '--show-sdk-path'], text=True).strip()
 command = ['swiftc', '-swift-version', '5', '-parse-as-library',
@@ -111,6 +113,10 @@ elif args.image_parity:
     subprocess.run([str(executable), str(args.cache.resolve()), str(root / '.build/ImageParity'), '--parity'], check=True, cwd=products)
 elif args.image:
     image_command = [str(executable), str(args.cache.resolve()), str((args.image_output or root / '.build/ImageTestOutput').resolve()), '--size', str(args.image_size)]
+    if args.image_prefix_benchmark:
+        image_command += ['--prefix-benchmark']
+    if args.image_repeat:
+        image_command += ['--repeat']
     if args.image_reference:
         image_command += ['--reference', str(args.image_reference.resolve())]
     if args.image_prompt:

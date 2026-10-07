@@ -1,6 +1,8 @@
 import Foundation
 import ImageIO
 import MLX
+import Synchronization
+@preconcurrency import CoreImage
 
 @main
 struct LocalImageSmoke {
@@ -16,6 +18,10 @@ struct LocalImageSmoke {
         let service = LocalImageService()
         let models = try await service.models(cache: cache)
         guard let model = models.first(where: { $0.quantized }) else { fatalError("A complete native MLX Qwen-Image-2.1 cache is required") }
+        if CommandLine.arguments.contains("--prefix-benchmark") {
+            try await prefixBenchmark(cache: cache, model: model)
+            return
+        }
         if CommandLine.arguments.contains("--checks") {
             try await checks(service, cache: cache, model: model)
             return
@@ -50,7 +56,90 @@ struct LocalImageSmoke {
         try checkImage(edited.png, size: size)
         precondition(edited.png != generated.png)
         print("PASS: actual native single-reference editing PNG, \(edited.seconds)s")
+        if CommandLine.arguments.contains("--repeat") {
+            let stages = Mutex<[String]>([])
+            let repeated = try await service.generate(request, cache: cache) { stage, _ in
+                stages.withLock { $0.append(stage) }
+                print("\(Date().timeIntervalSince1970) \(stage)")
+            }
+            precondition(stages.withLock { $0.contains("复用文本和参考图去噪缓存…") })
+            try repeated.png.write(to: output.appendingPathComponent("edited-blue-mug-repeat\(suffix).png"))
+            try compareImage(repeated.png, edited.png, label: "prefix reuse 40 steps")
+            print("PASS: repeated edit matches within pixel tolerance, \(repeated.seconds)s")
+            // Changing both seed and step count must still reuse an independent
+            // prefix, and match a fresh uncached run of those same parameters.
+            var changed = request
+            changed.steps = 2; changed.seed += 1
+            let reused = try await service.generate(changed, cache: cache) { _, _ in }
+            await service.clearSessionCache()
+            let freshStages = Mutex<[String]>([])
+            let fresh = try await service.generate(changed, cache: cache) { stage, _ in
+                freshStages.withLock { $0.append(stage) }
+            }
+            try compareImage(reused.png, fresh.png, label: "new seed/steps vs uncached")
+            precondition(freshStages.withLock { !$0.contains(where: { $0.hasPrefix("复用") }) })
+            print("PASS: new seed/steps match uncached image tolerance; clearSessionCache forces fresh encoding")
+        }
         print("MLX peak allocated bytes: \(Memory.peakMemory)")
+    }
+
+    static func prefixBenchmark(cache: SpeechCacheAccess.Configuration, model: LocalImageModel) async throws {
+        guard let index = CommandLine.arguments.firstIndex(of: "--reference") else {
+            fatalError("--prefix-benchmark requires --reference")
+        }
+        let reference = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+        let baseline = LocalImageService(prefixCacheLimit: 0)
+        let optimized = LocalImageService()
+        var request = LocalImageRequest(modelID: model.id,
+            prompt: "Change the bright red ceramic coffee mug to a vivid blue ceramic coffee mug. Keep the mug shape, handle, table, background, lighting and camera angle unchanged.",
+            reference: reference, width: 512, height: 512, steps: 2, seed: 43)
+        // Both services retain identical text/image conditioning. Only the
+        // bounded prefix cache differs; warm-up is excluded from the timings.
+        _ = try await baseline.generate(request, cache: cache) { _, _ in }
+        _ = try await optimized.generate(request, cache: cache) { _, _ in }
+        request.steps = 8
+        var expected: Data?
+        var deterministic: [Bool: Data] = [:]
+        for (trial, usePrefix) in [false, true, true, false].enumerated() {
+            let service = usePrefix ? optimized : baseline
+            let stages = Mutex<[String]>([])
+            let result = try await service.generate(request, cache: cache) { stage, _ in
+                stages.withLock { $0.append(stage) }
+            }
+            precondition(stages.withLock { $0.contains("复用文本和参考图去噪缓存…") } == usePrefix)
+            if let expected { try compareImage(result.png, expected, label: "prefix benchmark") }
+            else { expected = result.png }
+            if let previous = deterministic[usePrefix] { precondition(previous == result.png) }
+            deterministic[usePrefix] = result.png
+            print("BENCH trial=\(trial) prefix=\(usePrefix) seconds=\(result.seconds) pixelTolerancePassed=true")
+        }
+        await baseline.clearSessionCache()
+        await optimized.clearSessionCache()
+    }
+
+    // Different GEMM sequence lengths may round BF16 differently. Keep a
+    // strict image bound: RMS <= 1 level and mean absolute error <= 0.25 on
+    // the 0...255 RGBA scale, rather than requiring identical PNG bytes.
+    static func compareImage(_ actual: Data, _ expected: Data, label: String) throws {
+        let context = CIContext(options: [.cacheIntermediates: false])
+        func pixels(_ data: Data) -> (CGRect, [UInt8]) {
+            let image = CIImage(data: data)!
+            let rect = image.extent
+            var result = [UInt8](repeating: 0, count: Int(rect.width * rect.height) * 4)
+            context.render(image, toBitmap: &result, rowBytes: Int(rect.width) * 4,
+                bounds: rect, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+            return (rect, result)
+        }
+        let (shape, a) = pixels(actual), (expectedShape, b) = pixels(expected)
+        precondition(shape == expectedShape)
+        var squared = 0.0, absolute = 0.0
+        for (x, y) in zip(a, b) {
+            let delta = Double(x) - Double(y)
+            squared += delta * delta; absolute += abs(delta)
+        }
+        let rms = sqrt(squared / Double(a.count)), mean = absolute / Double(a.count)
+        print("PIXELS \(label): rms=\(rms), meanAbsolute=\(mean), exact=\(actual == expected)")
+        precondition(rms <= 1 && mean <= 0.25, "Image difference exceeds rounding tolerance")
     }
 
     static func checkImage(_ png: Data, size: Int = 512) throws {
@@ -127,6 +216,28 @@ struct LocalImageSmoke {
             close(result, controlInputs[name]!, "Union \(name) skip injection", tolerance: 0.00005)
             if scale > 0 { precondition(controlCache.count == controlTransformer.layers) }
         }
+        // Exercise the production API with BOTH prefix caches retained across
+        // timesteps (the convenience overload deliberately recomputes them).
+        var retainedBase: [(MLXArray, MLXArray)] = []
+        var retainedControl: [(MLXArray, MLXArray)] = []
+        _ = try controlTransformer.predict(latents: controlInputs["latents"]!, text: controlInputs["text"]!,
+            timestep: 0.75, layout: controlLayout, cache: &retainedBase,
+            control: branch, controlContext: controlInputs["context"]!, controlScale: 1,
+            controlCache: &retainedControl)
+        let later = try controlTransformer.predict(latents: controlInputs["latents"]!, text: controlInputs["text"]!,
+            timestep: 0.25, layout: controlLayout, cache: &retainedBase,
+            control: branch, controlContext: controlInputs["context"]!, controlScale: 1,
+            controlCache: &retainedControl)
+        close(later, controlInputs["later"]!, "Union cached later timestep", tolerance: 0.00005)
+        precondition(retainedControl.count == branch.blocks)
+        retainedControl.removeAll()
+        do {
+            _ = try controlTransformer.predict(latents: controlInputs["latents"]!, text: controlInputs["text"]!,
+                timestep: 0.25, layout: controlLayout, cache: &retainedBase,
+                control: branch, controlContext: controlInputs["context"]!, controlScale: 1,
+                controlCache: &retainedControl)
+            preconditionFailure("Missing control prefix must throw")
+        } catch LocalImageError.invalid { print("PASS: incomplete control cache rejected") }
         var baseCache: [(MLXArray, MLXArray)] = []
         let baseline = try controlTransformer.predict(latents: controlInputs["latents"]!, text: controlInputs["text"]!,
             timestep: 0.75, layout: controlLayout, cache: &baseCache)
@@ -194,6 +305,21 @@ struct LocalImageSmoke {
         let restarted = try await service.generate(restartRequest, cache: cache) { _, _ in }
         try checkImage(restarted.png)
         print("PASS: native image request starts again immediately after cancellation")
+        var differentSeed = restartRequest
+        differentSeed.seed += 1
+        let cachedStages = Mutex<[String]>([])
+        let reused = try await service.generate(differentSeed, cache: cache) { stage, _ in
+            cachedStages.withLock { $0.append(stage) }
+        }
+        precondition(cachedStages.withLock { $0.contains("复用文本和参考图去噪缓存…") })
+        await service.clearSessionCache()
+        let freshStages = Mutex<[String]>([])
+        let fresh = try await service.generate(differentSeed, cache: cache) { stage, _ in
+            freshStages.withLock { $0.append(stage) }
+        }
+        precondition(freshStages.withLock { !$0.contains(where: { $0.hasPrefix("复用") }) })
+        try compareImage(reused.png, fresh.png, label: "changed Seed vs fresh inference")
+        print("PASS: changed Seed reuses the prefix; clearing the session forces fresh encoding")
         let weights = QwenImage21Weights(arrays: ["test.weight": MLXArray.zeros([2, 3])])
         do {
             _ = try weights.linear(MLXArray.zeros([1, 4]), "test")

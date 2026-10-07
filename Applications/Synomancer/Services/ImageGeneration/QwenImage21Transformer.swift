@@ -152,7 +152,8 @@ final class QwenImage21Transformer {
     }
 
     /// First pass extracts step-independent text/reference K/V; later passes run
-    /// only the target image. Cache belongs to this request and never survives it.
+    /// only the target image. The caller owns cache lifetime and must match
+    /// conditioning and control state before reusing a prefix.
     func predict(latents: MLXArray, text: MLXArray, timestep: Float,
                  layout: QwenImage21Layout, cache: inout [(MLXArray, MLXArray)],
                  control: QwenImage21Control? = nil, controlContext: MLXArray? = nil,
@@ -261,6 +262,7 @@ final class QwenImage21Transformer {
         let normalized = MLXFast.layerNorm(x, eps: eps) * (1 + scale2)
         let hidden = try silu(blockWeights.linear(normalized, name + ".img_mlp.gate_layer")) * blockWeights.linear(normalized, name + ".img_mlp.proj")
         x = x + gate2 * (try blockWeights.linear(hidden, name + ".img_mlp.out"))
+        if let previous { return (x, previous) }
         return (x, (contiguous(k[0..., 0..., ..<layout.prefix, 0...]),
                     contiguous(v[0..., 0..., ..<layout.prefix, 0...])))
     }
