@@ -27,6 +27,7 @@ struct SettingsView: View {
     @AppStorage("speechBackend") private var speechBackend = "system"
     @AppStorage(LocalQwenMTP.enabledKey) private var mtpEnabled = true
     @AppStorage(LocalQwenMTP.temperatureKey) private var localTemperature = 0.6
+    @AppStorage("appleIntelligenceEffectEnabled") private var intelligenceEffectEnabled = true
     @State private var deleteConversationsDialog = false
     
     var body: some View {
@@ -63,6 +64,11 @@ struct SettingsView: View {
             .padding()
             
             Form {
+                Section("视觉效果") {
+                    Toggle("生成时显示彩色流光", isOn: $intelligenceEffectEnabled)
+                    Text("聊天生成和图像处理时，在内容边缘显示流光。遵循系统减少动态效果设置。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 HuggingFaceSettings()
                 LocalSpeechSettings()
                 LocalTTSSettings()

@@ -181,6 +181,7 @@ struct Chat: View, Sendable {
             }
 #endif
         }
+        .appleIntelligenceEffect(active: conversationStore.conversationState == .loading)
         .onChange(of: languageModelStore.models, { _, modelsList in
             if languageModelStore.selectedModel == nil {
                 updateSelectedModel()

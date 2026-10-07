@@ -112,6 +112,7 @@ struct ImageStudioView: View {
 #if os(macOS)
         .frame(minWidth: 820, idealWidth: 1000, minHeight: 700, idealHeight: 850)
 #endif
+        .appleIntelligenceEffect(active: store.busy)
         .task(id: home) { await store.reload() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
             do {
