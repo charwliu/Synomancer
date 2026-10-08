@@ -140,7 +140,18 @@ actor LocalChatService {
             }
             var userInput = UserInput(messages: history, images: images)
             userInput.processing.resize = .init(width: 448, height: 448)
-            let input = try await context.processor.prepare(input: userInput)
+            var input = try await context.processor.prepare(input: userInput)
+            // Gemma's VLM processor batches plain text as [1, L]. Its text-only
+            // prepare path accepts [L] and restores the batch dimension itself.
+            // Normalize only that verified path so enabling vision does not
+            // disable the existing chat prefix cache. Media keeps its metadata.
+            if model.modelType == "gemma4", input.image == nil, input.video == nil,
+               input.audio == nil, input.text.tokens.ndim == 2, input.text.tokens.dim(0) == 1,
+               input.text.mask.map({ mask in
+                   mask.shape == input.text.tokens.shape && mask.asArray(Int32.self).allSatisfy { $0 == 1 }
+               }) ?? true {
+                input = LMInput(tokens: input.text.tokens.reshaped([-1]))
+            }
             try Task.checkCancellation()
             // Read the rendered template, not a model-name guess: thinking may be
             // disabled by a template flag or use a different protocol entirely.

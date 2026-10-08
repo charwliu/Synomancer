@@ -2,7 +2,6 @@
 import Foundation
 import MLX
 import MLXNN
-import MLXRandom
 import MLXLLM
 import MLXLMCommon
 
@@ -10,6 +9,14 @@ import MLXLMCommon
 struct MLXModelLibraryTests {
     static func main() async throws {
         setbuf(stdout, nil)
+        // Scalar indexing on a non-leading axis uses Gather with zero-rank
+        // index metadata. The old Metal encoder passed an empty vector's nil
+        // pointer to setBytes, aborting with API validation enabled.
+        let matrix = MLXArray(0..<24).reshaped([2, 3, 4])
+        let scalarGather = take(matrix, MLXArray(Int32(1)), axis: 1)
+        precondition(scalarGather.shape == [2, 4])
+        precondition(scalarGather.asArray(Int32.self) == [4, 5, 6, 7, 16, 17, 18, 19])
+        print("PASS: scalar Gather metadata binds valid Metal bytes and preserves values")
         MLXRandom.seed(42)
         for type in ["qwen3", "qwen3_next", "qwen3_5", "qwen3_5_text"] {
             let supported = await LLMTypeRegistry.shared.contains(type)

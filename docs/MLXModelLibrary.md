@@ -31,7 +31,7 @@ tokenizer 依赖，不调用 Hub 下载接口。
 普通聊天使用 `generateTokensTask`；MTP 使用公开的 `MTPSpeculativeTokenIterator`
 和泛型 `generateTask`。两种路径均保留流式输出、停止字符串、采样参数和实际 token 用量。
 模型与草稿头由同一 actor 独占；取消、停止或完成后等待 worker 结束并同步 GPU，
-再允许下一次请求运行。不新增模型的 `@unchecked Sendable`，不修改 SPM checkout。
+再允许下一次请求运行。不新增模型的 `@unchecked Sendable`。
 
 `LocalQwenMoEModel.swift` 是 App 对 Qwen3.5 MoE 的局部加载桥接。
 `Qwen3.5-122B-A10B-oQ4-MTP` 把 `language_model.mtp.*` 放在主权重分片内；
@@ -124,3 +124,50 @@ python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
 需要逐字复现普通路径时关闭 MTP。
 
 流式停止会暂存可能属于 stop string 的后缀，避免分块输出泄漏停止标记的部分前缀。
+
+
+## Metal 验证下的 Gemma-4 崩溃修复
+
+2026-10-08 的 App 崩溃报告和开启 `MTL_DEBUG_LAYER=1` 的真实模型复现均指向
+`Gather::eval_gpu` → `CommandEncoder::set_vector_bytes`。标量索引的形状/步幅向量
+为空，旧实现把空指针交给 `setBytes`，触发 `bytes argument cannot be nil` 后 SIGABRT。
+这是底层编码错误，Swift 的 `catch` 无法拦截，也不是窗口关闭退出流程。
+
+当前官方 mlx-swift 0.32.3（底层 MLX v0.32.2）及核查时的 mlx-swift main
+仍未携带该修复。`Scripts/backport-mlx-metal.py` 回移植官方 MLX 的空向量处理：
+空向量绑定一个初始化为零的元素，非空向量保留原实现；kernel 的维度计数不变。
+来源：[MLX device.h](https://github.com/ml-explore/mlx/blob/6553c47ba6500e877d7348dd576c021c43a22cf7/mlx/backend/metal/device.h)。
+
+共享 Synomancer scheme 的 Build Pre-action 在编译前应用补丁，覆盖项目的
+`.build/SourcePackages` 和标准 DerivedData 的 `SourcePackages`；额外的命令行
+checkout 可通过脚本 `--source-packages` 指定。只修改 MLX 的源头和 framework
+导出两个头文件，保留权限；重复构建不重复修改。依赖仍来自官方固定 release，
+HF_HOME、权重及运行时模型实现不变。上游头文件若出现未知变化会拒绝补丁，
+需要审查后调整；正式 release 带入同一修复后可以移除此构建预处理。
+
+验证命令（先通过共享 scheme 完成 Release 构建，再顺序运行）：
+
+```sh
+python3 Tests/MLXMetalBackportTests.py
+python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
+  --source-packages .build/SourcePackages --configuration Release \
+  --chat-library --metal-validation
+python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
+  --source-packages .build/SourcePackages --configuration Release \
+  --cache /path/to/workspace/.cache/huggingface/hub --chat --metal-validation \
+  --model lmstudio-community/gemma-4-31B-it-MLX-8bit
+```
+
+`--chat-library` 包含非首轴标量 Gather 的形状和数值回归；真实 `--chat` 验证
+多轮聊天、取消和立即重启。补丁脚本测试检查幂等、只读权限恢复，以及未知头文件
+在任何写入前被拒绝。保留 Metal API 验证，不以关闭验证作为修复。
+
+Gemma-4 VLM processor 的纯文本输出为 `[1, L]`，而现有聊天前缀缓存要求 `[L]`。
+App 在没有图像、视频、音频且文本 mask 缺失或全部为 1 时将其归一化为 `[L]`；官方 Gemma
+text-only prepare 会自行恢复批次维度。这样开启视觉支持后仍保留文本前缀复用，
+有媒体的输入继续使用完整处理器输出。
+
+本机开启 Metal API 验证的 Gemma-4 31B 8bit 聊天回归通过：多轮口令提取、
+1024/1204 tokens 前缀命中、热/冷回答一致、修改系统提示词失效、缓存扩展、
+取消后的相同请求重试和立即发送新请求均完成。关闭窗口行为未参与此崩溃复现。
+同样开启验证的真实红杯识图通过，中文提示词与修复前未开启验证时的结果一致。
