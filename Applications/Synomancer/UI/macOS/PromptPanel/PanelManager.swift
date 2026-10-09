@@ -39,6 +39,10 @@ class PanelManager: NSObject, NSApplicationDelegate {
         }
     }
     
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+
     private func handleNewMessages() async {
         let timer = AsyncTimerSequence(interval: .seconds(0.1), clock: .continuous)
         for await _ in timer {

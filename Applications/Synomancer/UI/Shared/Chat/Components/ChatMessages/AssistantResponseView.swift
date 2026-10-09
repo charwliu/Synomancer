@@ -10,9 +10,11 @@ struct AssistantResponseView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let reasoning = parsed.reasoning, !reasoning.isEmpty || (streaming && parsed.isThinking) {
                 DisclosureGroup(isExpanded: $expanded) {
-                    NativeMarkdownView(content: reasoning)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 6)
+                    if expanded {
+                        NativeMarkdownView(content: reasoning)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 6)
+                    }
                 } label: {
                     if streaming && parsed.isThinking {
                         Label("思考中...", systemImage: "brain")

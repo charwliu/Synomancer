@@ -82,7 +82,7 @@ enum NativeMarkdownParser {
         return blocks
     }
 
-    private static func fenceStart(_ line: String) -> (character: Character, count: Int, language: String?)? {
+    fileprivate static func fenceStart(_ line: String) -> (character: Character, count: Int, language: String?)? {
         guard let character = line.first, character == "`" || character == "~" else { return nil }
         let count = line.prefix(while: { $0 == character }).count
         guard count >= 3 else { return nil }
@@ -137,5 +137,58 @@ enum NativeMarkdownParser {
             let value = cell.trimmingCharacters(in: CharacterSet(charactersIn: ":"))
             return value.count >= 3 && value.allSatisfy { $0 == "-" }
         }
+    }
+}
+
+/// Per-view cache. Only blank lines outside fenced code seal a prefix: tables,
+/// paragraphs and quoted blocks can still change shape while their tail grows.
+/// Edits, truncation and non-append tokenizer corrections rebuild from source.
+@MainActor
+final class NativeMarkdownParseCache {
+    private var source = ""
+    private var committedBytes = 0
+    private var committed: [NativeMarkdownBlock] = []
+    private var latest: [NativeMarkdownBlock] = []
+
+    func parse(_ next: String) -> [NativeMarkdownBlock] {
+        let appending = next.utf8.starts(with: source.utf8)
+        if appending && next.utf8.count == source.utf8.count { return latest }
+        if !appending {
+            committedBytes = 0
+            committed.removeAll(keepingCapacity: true)
+        }
+        source = next
+        var tail = String(decoding: next.utf8.dropFirst(committedBytes), as: UTF8.self)
+        let sealedBytes = Self.sealedPrefixBytes(tail)
+        if sealedBytes > 0 {
+            committed += NativeMarkdownParser.parse(String(decoding: tail.utf8.prefix(sealedBytes), as: UTF8.self))
+            committedBytes += sealedBytes
+            tail = String(decoding: tail.utf8.dropFirst(sealedBytes), as: UTF8.self)
+        }
+        latest = committed + NativeMarkdownParser.parse(tail)
+        return latest
+    }
+
+    private static func sealedPrefixBytes(_ text: String) -> Int {
+        let bytes = text.utf8
+        var start = bytes.startIndex
+        var sealed = bytes.startIndex
+        var fence: (character: Character, count: Int)?
+        for index in bytes.indices where bytes[index] == 10 {
+            let line = String(decoding: bytes[start..<index], as: UTF8.self)
+                .trimmingCharacters(in: .whitespaces)
+            let next = bytes.index(after: index)
+            if let active = fence {
+                if line.count >= active.count && line.allSatisfy({ $0 == active.character }) {
+                    fence = nil
+                }
+            } else if let opening = NativeMarkdownParser.fenceStart(line) {
+                fence = (opening.character, opening.count)
+            } else if line.isEmpty {
+                sealed = next
+            }
+            start = next
+        }
+        return bytes.distance(from: bytes.startIndex, to: sealed)
     }
 }

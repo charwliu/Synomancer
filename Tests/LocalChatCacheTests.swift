@@ -37,6 +37,37 @@ struct LocalChatCacheTests {
         try write("model.safetensors.index.json", "{\"weight_map\":{\"a\":\"model.safetensors\",\"b\":\"missing.safetensors\"}}")
         let empty1 = try scan(hub)
         precondition(empty1.isEmpty, "Missing shards must not be listed")
+        let nestedDirectory = snapshot.appendingPathComponent("optiq")
+        try FileManager.default.createDirectory(at: nestedDirectory, withIntermediateDirectories: true)
+        let nestedBlob = hub.appendingPathComponent("vision-blob")
+        try Data([1, 2, 3, 4]).write(to: nestedBlob)
+        let nestedWeight = nestedDirectory.appendingPathComponent("optiq_vision.safetensors")
+        try FileManager.default.createSymbolicLink(at: nestedWeight, withDestinationURL: nestedBlob)
+        func writeIndex(_ paths: [String: String]) throws {
+            try JSONSerialization.data(withJSONObject: ["weight_map": paths])
+                .write(to: snapshot.appendingPathComponent("model.safetensors.index.json"))
+        }
+        try writeIndex(["text": "model.safetensors", "vision.a": "optiq/optiq_vision.safetensors", "vision.b": "optiq/optiq_vision.safetensors"])
+        let nested = try scan(hub)
+        precondition(nested.count == 1 && nested[0].weightBytes == 5,
+                     "Nested HF blob links must be accepted and each shard counted once")
+        try nestedBlob.delete()
+        let missingNested = try scan(hub)
+        precondition(missingNested.isEmpty, "A missing nested shard must reject the checkpoint")
+        try Data().write(to: nestedBlob)
+        let emptyNested = try scan(hub)
+        precondition(emptyNested.isEmpty, "An empty nested shard must reject the checkpoint")
+        try Data([1, 2, 3, 4]).write(to: nestedBlob)
+        // These traversal paths resolve to existing files; rejection must not
+        // merely be a side effect of checking for a missing shard.
+        for path in ["../abc123/model.safetensors", "optiq/../model.safetensors",
+                     "./model.safetensors", "optiq//optiq_vision.safetensors",
+                     weights.path, "optiq\\optiq_vision.safetensors",
+                     "optiq/invalid\0.safetensors", "optiq/vision.bin"] {
+            try writeIndex(["invalid": path])
+            let invalid = try scan(hub)
+            precondition(invalid.isEmpty, "Invalid indexed path was accepted: \(path)")
+        }
         try snapshot.appendingPathComponent("model.safetensors.index.json").delete()
         try write("config.json", "{\"model_type\":\"qwen3_tts\"}")
         let empty2 = try scan(hub)
@@ -73,7 +104,7 @@ struct LocalChatCacheTests {
         try Data("{\"model_type\":\"qwen2\"}".utf8).write(to: alternate.appendingPathComponent("config.json"))
         let all = try LocalChatModelCache.scan(in: hub, allSnapshots: true)
         precondition(Set(all.map(\.modelType)) == ["qwen2", "qwen3_5"])
-        print("PASS: HF layouts, incomplete caches, all-snapshot discovery and Qwen3.5 text/vision routing")
+        print("PASS: HF layouts, nested weight paths, incomplete caches, all-snapshot discovery and Qwen3.5 text/vision routing")
     }
 }
 

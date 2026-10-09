@@ -2,9 +2,10 @@ import SwiftUI
 
 struct NativeMarkdownView: View {
     let content: String
+    @State private var parser = NativeMarkdownParseCache()
 
     var body: some View {
-        NativeMarkdownBlocks(blocks: NativeMarkdownParser.parse(content))
+        NativeMarkdownBlocks(blocks: parser.parse(content))
     }
 }
 
@@ -14,12 +15,17 @@ private struct NativeMarkdownBlocks: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                blockView(block)
+                NativeMarkdownBlockView(block: block).equatable()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)
     }
+
+}
+
+private struct NativeMarkdownBlockView: View, Equatable {
+    let block: NativeMarkdownBlock
 
     private func inline(_ value: String) -> Text {
         let text = try? AttributedString(
@@ -29,7 +35,7 @@ private struct NativeMarkdownBlocks: View {
     }
 
     @ViewBuilder
-    private func blockView(_ block: NativeMarkdownBlock) -> some View {
+    var body: some View {
         switch block {
         case .paragraph(let value):
             inline(value)

@@ -14,6 +14,8 @@ OllamaKit 已从 App 的包依赖和链接目标中移除。
 只有本项目模型工厂支持的架构、完整 tokenizer 和权重分片会出现在列表中。
 优先使用 refs/main 指向的完整 snapshot，其他完整 snapshot 作为备选。
 不下载模型、不复制或改写缓存；模型通过本地 directory 配置加载。
+权重索引支持 `optiq/optiq_vision.safetensors` 等相对子目录路径；所有引用的
+分片都必须完整可读，拒绝绝对路径和 `..` 等路径段。HF blob 符号链接仍受支持。
 默认选择权重体积较小的缓存模型，后续复用已加载的模型。
 
 当前本机默认模型为 `mlx-community/Qwen2-VL-2B-Instruct-4bit`，使用其文本能力。
@@ -142,7 +144,8 @@ MTP 和图片请求不会得到这项命中收益。该表衡量首 token 等待
 Qwen3.8-27B-Uncensored-OptiQ-4bit 约 25.5 tokens/s；
 Gemma-4-31B-it-MLX-8bit 约 14.1 tokens/s。它们是该样例的运行读数，
 不是前后提速对比，也不代表长回答、长上下文或其他量化版本。
-Gemma-4 OptiQ 4bit 本地目录缺少 preprocessor_config.json，未参与推理测试。
+当时 Gemma-4 OptiQ 4bit 本地目录缺少处理器配置，未参与推理测试。
+2026-10-08 已从其 Google QAT 基础模型补齐 `processor_config.json`。
 测试覆盖最终流式刷新、有效速度统计、取消/立即重启，以及真实 Store 的
 统计保存、实时估算与取消清理；Store 测试使用隔离数据库和模拟朗读回调。
 
@@ -162,6 +165,32 @@ Gemma-4 31B 8bit 的旧/新边界直接对照（1,759 token，固定 512 分块�
 新边界命中 1,664 token，为 0.615/0.614 秒。两组冷请求分别为 8.733/8.781 秒，
 最终答案均为预期口令。此固定样例热请求约缩短一半，不能推广为所有请求的
 固定提升，也不是解码吞吐翻倍。较细边界在未多命中 token 时不保证更快。
+
+## 长回答的界面解析
+
+NativeMarkdownView 保存仅属于当前视图的解析缓存：代码围栏外的完整空行
+之前的块可以复用，正在生成的尾部继续解析。使用 UTF-8 严格前缀检查，
+编辑、截断或分词器修正之前文字时重新解析；代码块中的空行不会提前提交。
+没有空行的长段落或未闭合代码块仍需要解析整个未完成的尾部。
+
+每个 Markdown 块通过 Equatable 视图跳过未变化内容的行内格式解析；
+折叠的思考区只在展开时构建 Markdown 内容。不会建立全局聊天文本缓存。
+
+2026-10-07，M4 Max，Swift 优化构建：22,560 字节的混合 Markdown，346 次
+流式快照，ABBA 顺序完整解析为 136.4/134.1 ms，增量解析为 8.55/7.88 ms。
+这是块级解析的 CPU 时间，未包含行内样式、SwiftUI 布局或模型推理，不能据此
+推算 tokens/s。测试包含 682 次流式/编辑对照、Unicode 规范化及原有块解析回归。
+实际 NSHostingView 验证浅色/深色的完整 Markdown、未闭合代码、折叠思考和
+思考中状态，共 8 组与优化前逐像素一致（含滚动区域的代码与表格文字）。
+
+独立解析回归及基准：
+
+```sh
+xcrun swiftc -O -module-cache-path /private/tmp/SynomancerMarkdownModuleCache \
+  Applications/Synomancer/UI/Shared/Chat/Components/ChatMessages/NativeMarkdownParser.swift \
+  Tests/NativeMarkdownParserTests.swift -o /private/tmp/SynomancerMarkdownTests
+/private/tmp/SynomancerMarkdownTests
+```
 
 ## Native Qwen4 GGUF / IQ3_S
 

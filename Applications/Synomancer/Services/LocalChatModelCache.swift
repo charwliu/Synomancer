@@ -68,20 +68,22 @@ enum LocalChatModelCache {
               llmTypes == nil || llmTypes!.contains(type) || vlmTypes?.contains(type) == true,
               readableFile(directory.appendingPathComponent("tokenizer.json")),
               readableFile(directory.appendingPathComponent("tokenizer_config.json")) else { return nil }
+        let hasProcessor = readableFile(directory.appendingPathComponent("preprocessor_config.json"))
+            || readableFile(directory.appendingPathComponent("processor_config.json"))
         let hasVisionAssets = config["vision_config"] as? [String: Any] != nil
             && config["language_model_only"] as? Bool != true
-            && readableFile(directory.appendingPathComponent("preprocessor_config.json"))
+            && hasProcessor
         // Shared model_type keys (Qwen3.5, Gemma3…) can also be text-only checkpoints.
         let images = vlmTypes?.contains(type) == true
             && (llmTypes?.contains(type) != true || hasVisionAssets)
-        if images && !readableFile(directory.appendingPathComponent("preprocessor_config.json")) { return nil }
+        if images && !hasProcessor { return nil }
         let index = directory.appendingPathComponent("model.safetensors.index.json")
         let weights: [URL]
         if FileManager.default.fileExists(atPath: index.path) {
             guard let data = try? Data(contentsOf: index),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let map = json["weight_map"] as? [String: String], !map.isEmpty,
-                  map.values.allSatisfy({ !$0.contains("/") && $0.hasSuffix(".safetensors") }) else { return nil }
+                  map.values.allSatisfy(validWeightPath) else { return nil }
             weights = Set(map.values).map { directory.appendingPathComponent($0) }
         } else {
             weights = ((try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [])
@@ -92,6 +94,15 @@ enum LocalChatModelCache {
             total + ((try? FileManager.default.attributesOfItem(atPath: url.resolvingSymlinksInPath().path)[.size] as? NSNumber)?.uint64Value ?? 0)
         }
         return LocalChatModel(id: id, directory: directory, modelType: type, isVisionModel: images, supportsImages: images && type != "qwen2_vl", weightBytes: size)
+    }
+
+    private static func validWeightPath(_ path: String) -> Bool {
+        // Index paths are relative to the snapshot. HF files may legitimately
+        // symlink to the repository's blob store, so validate path components
+        // without requiring the resolved file to remain inside the snapshot.
+        let components = path.split(separator: "/", omittingEmptySubsequences: false)
+        return path.hasSuffix(".safetensors") && !path.contains("\\") && !path.contains("\0")
+            && components.allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." }
     }
 
     private static func readableFile(_ url: URL) -> Bool {

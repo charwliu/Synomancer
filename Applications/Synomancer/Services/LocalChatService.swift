@@ -143,7 +143,7 @@ actor LocalChatService {
                 if model.isVisionModel {
                     var content: [[String: String]] = [["type": "text", "text": message.content]]
                     if let data = message.image {
-                        guard let image = CIImage(data: data) else { throw ChatError.invalidImage }
+                        guard let image = CIImage(data: data, options: [.applyOrientationProperty: true]) else { throw ChatError.invalidImage }
                         images.append(.ciImage(image))
                         content.append(["type": "image"])
                     }
