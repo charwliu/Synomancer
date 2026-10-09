@@ -162,3 +162,242 @@ Gemma-4 31B 8bit 的旧/新边界直接对照（1,759 token，固定 512 分块�
 新边界命中 1,664 token，为 0.615/0.614 秒。两组冷请求分别为 8.733/8.781 秒，
 最终答案均为预期口令。此固定样例热请求约缩短一半，不能推广为所有请求的
 固定提升，也不是解码吞吐翻倍。较细边界在未多命中 token 时不保证更快。
+
+## Native Qwen4 GGUF / IQ3_S
+
+`SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF` now has a dedicated
+Swift + MLX implementation in `Services/GGUF`. It reads the two original IQ3_S
+shards without converting them to affine MLX quantization. GGUF is a container:
+this checkpoint actually mixes ten quantization formats. Packed Metal kernels
+handle Q8_0, Q6_K, Q5_K, Q4_K, Q2_0, IQ4_XS, IQ4_NL, IQ3_S, IQ3_XXS and IQ2_S.
+The decoder includes Qwen4 hyper-connections, PLE n-gram hashing, GatedDeltaNet,
+QSA and routed/shared experts. The projector uses a native Swift Qwen3-VL vision
+tower and multimodal rotary positions.
+
+Inference runs inside Synomancer. No Python interpreter, llama.cpp runtime,
+external service, port, or API key is involved. The Metal layout definitions are
+adapted from MIT-licensed llama.cpp commit
+`8a1a9b5126126e5228b95fa909d4b08fac65e8b3`; model equations follow MIT-licensed
+mlx-vlm commit `c24454765c3177a385185c185b4957567c5fdf89`. The Swift vision tower is
+adapted from mlx-swift-lm 3.32.3. License notices are retained in the source files.
+
+An exported directory needs the official `config.json`, `tokenizer.json`,
+`tokenizer_config.json`, `preprocessor_config.json`, and `synomancer-gguf.json`:
+
+```json
+{
+  "firstShard": "IQ3_S/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf",
+  "projector": "mmproj-Qwen3.8-Flash-Next-BF16.gguf",
+  "mtp": "mtp-Qwen3.8-Flash-Next-Q8_0-complete.gguf"
+}
+```
+
+Asset paths are relative and may contain subdirectories. Both shards must exist.
+The projector is optional; without it the model is text-only. HF blob symlinks
+are supported. Shape and tensor completeness are checked before allocating
+weights. `Tools/prepare-qwen4-gguf.sh tokenizer-assets gguf-snapshot export-directory`
+creates an offline export by copying metadata/tokenizer files and linking the
+existing weights. An optional fourth argument copies a complete MTP sidecar into
+the export and adds its relative `mtp` path. It refuses to overwrite an existing export.
+
+The prepared local entry is `Synomancer/Qwen3.8-Flash-Next-IQ3_S` under the selected
+HF cache. Refresh models in Synomancer and select it. This resident implementation
+requires 128 GB unified memory. The first load takes roughly 1–2 minutes and
+subsequent requests reuse the weights. Switching to another local chat model
+releases these weights. Generation supports history, image attachments,
+temperature/top-p, stop strings, streaming, cancellation and restart.
+
+Native MTP uses the complete 37-tensor Q8_0 sidecar, including the repaired
+`blk.48.nextn.hc_head_{norm,down,up}.weight` tensors. The original incomplete
+sidecar is rejected before allocating draft weights. Set **Local Chat Temperature**
+to **0** and enable **MTP**; missing sidecars, other temperatures, or a disabled
+MTP setting use ordinary decoding with an explicit fallback reason. The local
+export already includes the complete sidecar. Only target-verified draft tokens
+are emitted. On rejection, the target commits the accepted prefix by trimming
+attention/index caches, selecting the saved PLE state, and recomputing only GDN
+recurrence from retained verifier projections. It does not rerun embeddings,
+attention or experts. Draft KV is trimmed separately. After warmup (two rounds
+for short prompts, eight for bulk prompts), up to three drafts are used when
+at least 65% of the most recent 32 rounds accepted the first draft; otherwise
+only one is proposed. Generation limits, stop strings and cancellation apply
+to emitted tokens. The final permitted pending token needs no extra forward pass.
+
+Long prompts use chunks of up to 1,024 tokens (512 for prompts below 1,024 tokens).
+Dense projections reuse lazily
+materialized FP16 weights; routed experts use a packed grouped Metal GEMM without
+expanding the full expert weights. QSA applies per-query causal block selection,
+and GDN/PLE carry state between chunks. Only the final prompt row is projected
+to vocabulary logits. `prefillStepSize` can override the chunk size (1–1,024).
+Short prompts default to 16-token chunks. For bulk prompts (128 tokens or more),
+the last prompt token is processed separately, matching Python `generate_step`.
+The draft initializes from the final target hidden row instead of reprocessing
+the entire prompt; the target still attends to the complete prompt.
+
+The native path caches converted floating-point matrices, GDN constants and
+completed QSA index blocks. Packed GDN rows are restored to native head order
+once at load; the output projection indexes its input without changing the
+packed weight reduction order. Pointwise graphs are compiled, GDN uses grouped
+MLX convolution, and decode submits logits/state asynchronously until sampling.
+Singleton decode submits every two layers to reduce CPU/Metal scheduling overhead;
+prefill and multi-row verification retain per-layer submission.
+Large prefill chunks use tiled masked attention; short verifier/decode blocks
+use indexed QSA beyond its 2,048-token dense-attention budget.
+Eligible floating-point projections evaluate verifier rows together in a Metal
+GEMV that preserves singleton reduction order. Narrow projections retain the
+row-wise fallback; packed quantization and weight precision stay unchanged.
+MoE decode graphs reuse captured weight references and receive activations as
+explicit inputs. Routing is recomputed for every call; KV, convolution and
+recurrent state remain request-owned. Bulk prefill retains grouped expert GEMM.
+
+Current limits: prompt-cache reuse is disabled. Context is capped at 32,768
+prompt + output tokens; images are resized to the chat service's 448-pixel
+budget. Cold model loading is separate from prefill time.
+
+Validation commands (after a Release build):
+
+```sh
+Tests/run-gguf-reader-tests.sh
+Tests/run-gguf-tests.sh --kernels
+Tests/run-gguf-tests.sh /path/to/first-shard.gguf "$PWD/Tests/Fixtures/qwen4-iq3s-greedy.json"
+SYNOMANCER_GGUF_PREFILL=512 Tests/run-gguf-tests.sh /path/to/first-shard.gguf "$PWD/Tests/Fixtures/qwen4-iq3s-long.json"
+SYNOMANCER_GGUF_MTP=/path/to/complete.gguf Tests/run-gguf-tests.sh /path/to/first-shard.gguf "$PWD/Tests/Fixtures/qwen4-iq3s-long-api-128.json"
+Tests/run-gguf-tests.sh --integration /path/to/export /path/to/blue-right-handled-mug.png
+```
+
+The fixture records greedy token IDs from the independently verified MLX / Metal
+baseline. Integration checks exercise the actual `LocalChatService`, including
+vision, history, cancellation, retry, stop sequences and sampling. These are
+real-model tests, not mocked inference.
+
+Native optimization regressions can enable `SYNOMANCER_GGUF_MTP=/path/to/complete.gguf`
+to compare MTP off, on and forced rejection against the same reference tokens.
+`SYNOMANCER_GGUF_COMPARE_PREFILL=1` compares chunks 1, 512 and warm 512 in one
+loaded process, then tests MTP with chunk 512 when a sidecar is provided.
+The synthetic kernel test covers all ten quantization formats, both SIMD lane
+widths, exact small-batch GEMV, duplicate expert routes and partial GEMM tiles.
+
+Initial baseline after native MTP and batch-invariance fixes (same loaded M4 Max 128 GB process,
+47-token prompt, 256 greedy output tokens), ordinary decoding measured **26.84
+tokens/s**, MTP **47.36 tokens/s** (**1.76×**). It accepted 182 of 203 proposed
+tokens (**89.7%**); all 256 output tokens matched the independent reference.
+Small verifier blocks preserve singleton reductions for floating projections,
+PLE convolutions and attention as well as packed quantized GEMV. The optional
+`SYNOMANCER_GGUF_TRACE=1` test asserts per-layer hidden-state equality against
+singleton decode before running the output regression.
+
+For a 4,037-token prompt in one loaded process, token-at-a-time prefill took
+**193.20 s**, 512-token chunks took **12.16 s** on the first pass and **11.18 s**
+warm (**15.9–17.3× faster**). These exclude model loading; the first sequential
+pass includes kernel warmup. All three runs matched the 32 checked reference
+output tokens. MTP prefill took **11.53 s** and its 32-token output also matched,
+as did forced rejection of an otherwise accepted proposal. This long-context
+sample accepted only 14/26 draft tokens (53.8%): decode stayed around **20–21
+tokens/s**, so MTP did not provide an additional decode speedup on this prompt.
+Acceptance and acceleration depend on the prompt; full 32K parity is not claimed.
+
+That baseline's service regression also passed history, vision MTP on/off text and
+token-count equality ("杯身是蓝色的，把手在右侧。"), cancellation/restart, stop strings,
+nonzero-temperature fallback and a one-token generation limit. The short first
+vision response includes cold dispatch overhead and is not used as a steady-state
+throughput benchmark. Release build and GGUF/cache-reader checks passed. Local
+logs and `validation.json` are in `.build/GGUFTests/` (generated, not versioned).
+
+Prefill layout matters for exact greedy comparisons. The original
+`qwen4-iq3s-long-128.json` records Python's 512-step direct-model prefill.
+`qwen4-iq3s-long-1024-128.json` records direct-model 1,024-step prefill with the
+entire final chunk; Python and native agree on all 128 tokens, but differ from
+the older fixture at token 35 (`Record` versus `Color`). Both are retained.
+
+The current application uses the generation API layout: 1,024-step prefill with
+the final prompt token separate, and final-hidden-row draft initialization.
+`qwen4-iq3s-long-api-128.json` records this configuration and independent Python
+MTP `generate_step` output. Native ordinary/MTP/forced rejection match all 128 tokens;
+Python's repeated MTP runs also agree. Do not mix these distinct prefill layouts
+when asserting parity. `SYNOMANCER_GGUF_DIAGNOSE_PARITY=1` remains a diagnostic
+escape hatch only; all final checks run with strict reference assertions.
+
+`SYNOMANCER_GGUF_REPETITIONS=3` repeats ordinary/MTP runs with fresh request
+state in one loaded process. `SYNOMANCER_GGUF_EXTRA_FIXTURE=/path/to/fixture.json`
+adds a second prompt without reloading weights. Decode throughput excludes
+the first token supplied by prefill and excludes result printing. Cold load,
+prefill, and decode must be reported separately; do not compare system-memory
+pressure runs to an earlier uncontended baseline as evidence of a speedup.
+
+2026-10-09 optimization measurements, M4 Max 128 GB, Release, original
+mixed-quantization GGUF weights. The app uses Swift + MLX with no Python or
+llama.cpp runtime. Cached MoE/GDN graphs, GPU draft chaining, prefix-state commit
+and final-token early return are enabled. The adaptive policy uses first-draft
+hits in the most recent 32 rounds (65% threshold), with two warmup rounds for
+short prompts and eight for bulk prompts.
+
+Each benchmark keeps weights loaded and resets request state. Warm means exclude
+one initial run and include three subsequent runs; loading, prefill and decode
+are separate, and printing is outside decode timing. Short results come from
+`/tmp/qwen4-coalesced-short.log`; the standalone long run is
+`/tmp/qwen4-coalesced-final.log`. Python runs are sequential, not concurrent.
+
+| Measurement | Native Swift + MLX | Python MLX reference |
+| --- | --- | --- |
+| 47 input / 256 output, ordinary decode, warm mean | 46.42 tokens/s | 43.68 tokens/s |
+| Same short prompt, MTP decode, warm mean | 83.31 tokens/s | 73.74 tokens/s |
+| Same short prompt, ordinary prefill, warm mean | 0.423 s | 0.482 s |
+| Same short prompt, MTP prefill, warm mean | 0.438 s | 0.493 s |
+| 4,037 input / 128 output, MTP decode, warm mean | 56.29 tokens/s | 54.60 tokens/s |
+| Same long prompt, MTP prefill, warm mean | 6.84 s | 6.92 s |
+| Same long continuation, ordinary decode, warm mean | 42.90 tokens/s | 41.32 tokens/s (controlled continuation) |
+| Same long continuation, ordinary prefill, warm mean | 6.24 s | 6.90 s (controlled continuation) |
+
+These are individual benchmark sessions, not a universal speedup claim. Earlier
+Python short runs measured 46.89 / 79.08 tokens/s ordinary/MTP: native ordinary
+short decode is comparable (about 1% below that earlier session), while MTP is
+faster in these samples. Native long MTP warm means varied from 54.59 to 58.02
+across sessions. The initial native long prefill baseline above was 11.18 s warm.
+
+Per-layer submission had intermittent long ordinary slowdowns to 31–37 tokens/s.
+A forward/reverse submission-interval sweep and an alternating 1/2-layer test
+retained exact outputs. With the draft resident, the alternating two-layer runs
+measured 44.23, 43.93, 43.27 and 42.89 tokens/s; the last per-layer run fell to
+38.73. The final default changes only singleton non-prefill submission to every
+two layers. Its three warm ordinary runs measured 43.19, 43.10 and 42.42 tokens/s.
+This supports the selected scheduling change; it does not prove the underlying
+system variability has been eliminated. Cold loading and compilation remain
+outside steady-state comparisons.
+
+Python's ordinary generation API predicts `Record` at zero-based output index
+35, whereas its MTP API predicts `Color`; native ordinary and MTP both predict
+`Color`. This is a numerical output divergence, not full Python ordinary/MTP
+parity. The ordinary comparison in the table feeds Python the same complete
+128-token continuation used by native, still computing full logits and argmax
+at every step. Only prediction 35 differs in all four Python runs. That benchmark
+compares identical forward inputs, not unconstrained Python API generation.
+The short Python comparison passes all reference tokens; its subsequent ordinary
+long assertion failed at index 35 and is not counted as a passing full suite.
+
+Native ordinary/MTP/forced rejection match all 256 short and 128 long fixture
+tokens. Long MTP also matches Python's 135 proposals, 76 accepted tokens and 28
+rejected rounds. Prefix-state commit is checked against full replay: 14 short
+and 24 long rejection cases have exactly equal hidden states and every cache.
+Synthetic GDN prefix lengths 1/2/3 also match, with input snapshots unchanged.
+The final-token regression checks that returning the pending token does not
+advance target history.
+
+`SYNOMANCER_GGUF_MODE_ORDER=0,0,0,0,1,1,1,1,2` reproduces short benchmark order
+and forced rejection; `SYNOMANCER_GGUF_LONG_MODE_ORDER` controls long order.
+`SYNOMANCER_GGUF_CHECK_PREFIX_COMMIT=1` enables full-state comparisons in mode 2
+only, excluding their overhead from performance modes. Graph comparisons use
+`SYNOMANCER_GGUF_EXPERT_VARIANTS` with `plain`, `compiled`, `gdn`, `chain` or
+`early`; do not combine these with layer tracing.
+`SYNOMANCER_GGUF_PREFILL_CHUNKS=512,1024,1024,512` compares chunk sizes.
+`SYNOMANCER_GGUF_SUBMISSION_STRIDES=1,2,1,2,1,2,1,2` compares singleton
+decode submission intervals with strict token checks in one loaded process.
+These switches are test harness controls.
+
+Static projection caching and four-token drafts were tested and removed because
+they did not improve throughput. Generated evidence is in
+`.build/GGUFTests/optimization-progress.json`. Final strict-reference, kernel,
+Release and service logs use `/tmp/qwen4-coalesced-{short,final,kernels,release,integration}.log`.
+Release build and service integration passed history, visual MTP on/off output
+and token-count equality, cancellation/restart, stop sequences, sampling fallback
+and one-token termination. Quantized/floating kernel and GGUF reader/cache checks
+also passed. The short vision request is a correctness check, not a steady-state
+vision throughput benchmark.

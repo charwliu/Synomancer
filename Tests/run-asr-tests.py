@@ -72,6 +72,7 @@ elif args.chat or args.chat_store or args.chat_api or args.chat_library or args.
     command += [str(root / path) for path in [
         'Tests/LocalChatTokenizerTests.swift' if args.chat_tokenizer else 'Tests/LocalChatMoESmoke.swift' if args.chat_moe else 'Tests/LocalChatReasoningSmoke.swift' if args.chat_reasoning else 'Tests/LocalChatMTPSmoke.swift' if args.chat_mtp else 'Tests/MLXModelLibraryTests.swift' if args.chat_library else ('Tests/ChatAPITests.swift' if args.chat_api else ('Tests/LocalChatStoreTests.swift' if args.chat_store else 'Tests/LocalChatSmoke.swift')), 'Applications/Synomancer/Services/LocalChatModelCache.swift',
         'Applications/Synomancer/Services/AssistantMessageContent.swift', 'Applications/Synomancer/Services/LocalQwenMoEModel.swift', 'Applications/Synomancer/Services/LocalChatService.swift', 'Applications/Synomancer/Services/LocalQwenMTP.swift', 'Applications/Synomancer/Services/LocalChatTokenizerLoader.swift', 'Applications/Synomancer/Services/SpeechCacheAccess.swift']]
+    command += [str(path) for path in sorted((root / 'Applications/Synomancer/Services/GGUF').glob('*.swift'))]
     if args.chat_store or args.chat_api:
         command += [str(root / path) for path in [
             'Applications/Synomancer/Services/OpenAIConfiguration.swift',

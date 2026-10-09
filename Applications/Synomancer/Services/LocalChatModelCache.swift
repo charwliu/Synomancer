@@ -50,6 +50,18 @@ enum LocalChatModelCache {
     }
 
     private static func inspect(_ directory: URL, id: String, llmTypes: Set<String>? = nil, vlmTypes: Set<String>? = nil) -> LocalChatModel? {
+        if let descriptor = try? Qwen4GGUFDescriptor.read(directory),
+           readableFile(directory.appendingPathComponent("config.json")),
+           readableFile(directory.appendingPathComponent("tokenizer.json")),
+           readableFile(directory.appendingPathComponent("tokenizer_config.json")),
+           readableFile(directory.appendingPathComponent("preprocessor_config.json")),
+           descriptor.shards.allSatisfy({ readableFile(directory.appendingPathComponent($0)) }) {
+            let images = descriptor.projector.map { readableFile(directory.appendingPathComponent($0)) } ?? false
+            let bytes = descriptor.shards.reduce(UInt64(0)) { total, path in
+                total + ((try? FileManager.default.attributesOfItem(atPath: directory.appendingPathComponent(path).resolvingSymlinksInPath().path)[.size] as? NSNumber)?.uint64Value ?? 0)
+            }
+            return LocalChatModel(id: id, directory: directory, modelType: "qwen4_exp_gguf", isVisionModel: images, supportsImages: images, weightBytes: bytes)
+        }
         guard let data = try? Data(contentsOf: directory.appendingPathComponent("config.json")),
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = config["model_type"] as? String,

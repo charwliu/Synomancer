@@ -29,6 +29,7 @@ actor LocalChatService {
     static let shared = LocalChatService()
     // All model access is actor-owned and protected by the generating gate across
     // suspension points. The upstream worker is joined before another request runs.
+    private var gguf: LocalQwen4GGUF?
     private var context: ModelContext?
     private var drafter: Qwen35MTPDraftModel?
     private var loadedModel: LocalChatModel?
@@ -95,6 +96,18 @@ actor LocalChatService {
             throw ChatError.modelTooLarge(modelID)
         }
         if messages.contains(where: { $0.image != nil }) && !model.supportsImages { throw ChatError.imagesUnsupported }
+        if model.modelType == "qwen4_exp_gguf" {
+            context = nil
+            drafter = nil
+            promptCheckpoint = nil
+            loadedModel = nil
+            loadedDirectory = nil
+            loadedCache = nil
+            if gguf?.directory != model.directory { gguf = nil; MLX.Memory.clearCache(); gguf = LocalQwen4GGUF(directory: model.directory) }
+            return try await gguf!.generate(messages: messages, temperature: temperature, maxTokens: maxTokens,
+                topP: topP, stop: stop, useMTP: useMTP, prefillStepSize: prefillStepSize, onUpdate: onUpdate)
+        }
+        if gguf != nil { gguf = nil; MLX.Memory.clearCache() }
         if context == nil || loadedDirectory != model.directory || loadedCache != cache {
             let configData = try Data(contentsOf: model.directory.appendingPathComponent("config.json"))
             if let config = try JSONSerialization.jsonObject(with: configData) as? [String: Any] {
