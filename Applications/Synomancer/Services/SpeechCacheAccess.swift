@@ -3,13 +3,15 @@ import Foundation
 import AppKit
 #endif
 
-/// Chat, ASR and TTS share one HF_HOME setting and its read-only directory grant.
+/// Chat, images, ASR and TTS share one HF_HOME and directory grant.
+/// Model downloads upgrade the grant to read/write through the native picker.
 enum SpeechCacheAccess {
     static let homeKey = "HF_HOME"
     static let defaultPath = "/path/to/workspace/.cache/huggingface/hub"
     static let bookmarkKey = "localSpeechCacheBookmark"
     // Retained for migration and to associate an existing bookmark with its path.
     static let pathKey = "localSpeechCachePath"
+    static let writablePathKey = "hfCacheWritablePath"
 
     struct Configuration: Equatable, Sendable {
         let path: String
@@ -106,9 +108,9 @@ enum SpeechCacheAccess {
         return try URL(resolvingBookmarkData: data, options: options, bookmarkDataIsStale: &stale)
     }
 
-    static func save(_ url: URL, in defaults: UserDefaults = .standard) throws {
+    static func save(_ url: URL, in defaults: UserDefaults = .standard, writable: Bool = false) throws {
 #if os(macOS)
-        let options: URL.BookmarkCreationOptions = [.withSecurityScope, .securityScopeAllowOnlyReadAccess]
+        let options: URL.BookmarkCreationOptions = writable ? [.withSecurityScope] : [.withSecurityScope, .securityScopeAllowOnlyReadAccess]
 #else
         let options: URL.BookmarkCreationOptions = [.minimalBookmark]
 #endif
@@ -116,5 +118,37 @@ enum SpeechCacheAccess {
         defaults.set(data, forKey: bookmarkKey)
         defaults.set(normalized(url.path), forKey: pathKey)
         defaults.set(normalized(url.path), forKey: homeKey)
+        if writable { defaults.set(normalized(url.path), forKey: writablePathKey) }
+        else { defaults.removeObject(forKey: writablePathKey) }
+    }
+
+    @MainActor static func authorizedWritableConfiguration(in defaults: UserDefaults = .standard) async throws -> Configuration {
+        try Task.checkCancellation()
+        let current = configuration(in: defaults)
+        if defaults.string(forKey: writablePathKey) == current.path, current.bookmark != nil {
+            return current
+        }
+#if os(macOS)
+        let panel = NSOpenPanel()
+        panel.title = "允许写入 HF_HOME"
+        panel.message = "选择 HF_HOME 文件夹，允许 Synomancer 保存下载的模型。现有只读授权不能用于下载。"
+        panel.prompt = "允许下载到此文件夹"
+        panel.canChooseDirectories = true; panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false; panel.canCreateDirectories = true; panel.showsHiddenFiles = true
+        panel.directoryURL = URL(fileURLWithPath: current.path, isDirectory: true)
+        let url: URL? = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                panel.begin { response in continuation.resume(returning: response == .OK ? panel.url : nil) }
+            }
+        } onCancel: { Task { @MainActor in panel.cancel(nil) } }
+        try Task.checkCancellation()
+        guard let url else { throw CancellationError() }
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        try save(url, in: defaults, writable: true)
+        return configuration(in: defaults)
+#else
+        throw AccessError.unavailable(current.path)
+#endif
     }
 }

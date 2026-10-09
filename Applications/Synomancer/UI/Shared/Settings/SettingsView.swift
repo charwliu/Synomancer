@@ -69,7 +69,7 @@ struct SettingsView: View {
                     Text("聊天生成和图像处理时，在内容边缘显示流光。遵循系统减少动态效果设置。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                HuggingFaceSettings()
+                HuggingFaceSettings(onDownloadComplete: refreshModels)
                 LocalSpeechSettings()
                 LocalTTSSettings()
                 OpenAISettings(refreshModels: refreshModels, apiKey: $openAIKey)
