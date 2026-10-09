@@ -20,6 +20,24 @@ struct LocalImageRequest: Sendable {
     var control: Data?
     var controlScale: Float = 1
     var controlEnd: Float = 1
+    var guidance: Float = 3.5
+    var negativePrompt = ""
+    var trueCFGScale: Float = 2
+
+    var activeNegativePrompt: String? {
+        let text = negativePrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    func validateNegativePrompt(for family: LocalImageFamily) throws {
+        guard activeNegativePrompt != nil else { return }
+        guard family.supportsNegativePrompt else {
+            throw LocalImageError.invalid("\(family.rawValue) 当前不支持负面提示词；请清空负面提示词或切换模型。")
+        }
+        guard trueCFGScale.isFinite, trueCFGScale > 1, trueCFGScale <= 10 else {
+            throw LocalImageError.invalid("负面提示词的 CFG 强度必须大于 1 且不超过 10。")
+        }
+    }
 }
 
 struct LocalImageResult: Sendable {
@@ -40,6 +58,7 @@ actor LocalImageService {
     private struct ConditioningKey: Equatable {
         let directory: URL
         let prompt: String
+        let negativePrompt: String?
         let reference: SHA256.Digest?
         let control: SHA256.Digest?
         let width: Int
@@ -49,6 +68,8 @@ actor LocalImageService {
         let key: ConditioningKey
         let features: MLXArray
         let slots: [Bool]
+        let negativeFeatures: MLXArray?
+        let negativeSlots: [Bool]
         let reference: MLXArray?
         let control: MLXArray?
     }
@@ -111,8 +132,24 @@ actor LocalImageService {
         guard let model = try LocalImageModelCache.scan(root).first(where: { $0.id == request.modelID }) else {
             throw LocalImageError.unavailable
         }
+        try request.validateNegativePrompt(for: model.family)
+        if model.family == .flux2Dev {
+            conditioning = nil
+            denoisingPrefix = nil
+            return try await Flux2DevPipeline.generate(request, model: model, progress: progress)
+        }
         guard model.bytes < ProcessInfo.processInfo.physicalMemory / 2 else {
             throw LocalImageError.invalid("此图像模型权重过大，请选择 MLX 量化版本。")
+        }
+        if model.family == .flux1Dev {
+            conditioning = nil
+            denoisingPrefix = nil
+            return try await Flux1Pipeline.generate(request, model: model, progress: progress)
+        }
+        if model.family == .flux2Klein9B {
+            conditioning = nil
+            denoisingPrefix = nil
+            return try await Flux2KleinPipeline.generate(request, model: model, progress: progress)
         }
         let controlModel: LocalImageControlModel?
         if request.control != nil && request.controlScale > 0 {
@@ -148,7 +185,7 @@ actor LocalImageService {
         let referenceData = request.control == nil ? request.reference : nil
         let controlData = control == nil ? nil : request.control
         let key = ConditioningKey(directory: directory.resolvingSymlinksInPath(), prompt: request.prompt,
-            reference: referenceData.map { SHA256.hash(data: $0) },
+            negativePrompt: request.activeNegativePrompt, reference: referenceData.map { SHA256.hash(data: $0) },
             control: controlData.map { SHA256.hash(data: $0) },
             width: request.width, height: request.height)
         let height = request.height / 16, width = request.width / 16
@@ -165,6 +202,14 @@ actor LocalImageService {
             let (features, slots) = try await Self.encodePrompt(request.prompt,
                 reference: reference?.image, directory: directory)
             eval(features)
+            var negativeFeatures: MLXArray?
+            var negativeSlots: [Bool] = []
+            if let negative = request.activeNegativePrompt {
+                progress("编码负面提示词…", 0.03)
+                let encoded = try await Self.encodePrompt(negative, reference: reference?.image, directory: directory)
+                negativeFeatures = encoded.0; negativeSlots = encoded.1
+                eval(encoded.0)
+            }
             try Task.checkCancellation()
             var referenceLatent: MLXArray?
             if let reference {
@@ -185,9 +230,10 @@ actor LocalImageService {
             }
             try Task.checkCancellation()
             prepared = Conditioning(key: key, features: features, slots: slots,
+                negativeFeatures: negativeFeatures, negativeSlots: negativeSlots,
                 reference: referenceLatent, control: controlContext)
             // One entry, bounded to at most 64 MiB even for FP32 conditioning.
-            let elements = features.size + (referenceLatent?.size ?? 0) + (controlContext?.size ?? 0)
+            let elements = features.size + (negativeFeatures?.size ?? 0) + (referenceLatent?.size ?? 0) + (controlContext?.size ?? 0)
             if elements <= 16 * 1024 * 1024 && requestCacheRevision == cacheRevision { conditioning = prepared }
         }
         let features = prepared.features
@@ -198,6 +244,11 @@ actor LocalImageService {
         if referenceLatent != nil { shapes.append((height, width)) }
         shapes.append((height, width))
         let layout = try QwenImage21Layout(imageSlots: prepared.slots, shapes: shapes, axes: transformer.axes)
+        let negativeLayout = try prepared.negativeFeatures.map { _ in
+            try QwenImage21Layout(imageSlots: prepared.negativeSlots, shapes: shapes, axes: transformer.axes)
+        }
+        var negativePrefixCache: [(MLXArray, MLXArray)] = []
+        var negativeControlCache: [(MLXArray, MLXArray)] = []
         var latents = MLXRandom.normal([1, height * width, 64], dtype: dtype, key: MLXRandom.key(request.seed))
         let sigmas = try Self.sigmas(steps: request.steps, tokens: height * width,
             config: LocalImageModelCache.json(directory.appendingPathComponent("scheduler/scheduler_config.json")))
@@ -221,11 +272,22 @@ actor LocalImageService {
                 // Recompute only once when the control schedule crosses its end.
                 prefixCache.removeAll()
                 controlCache.removeAll()
+                negativePrefixCache.removeAll()
+                negativeControlCache.removeAll()
             }
-            let prediction = try transformer.predict(latents: input, text: features,
+            var prediction = try transformer.predict(latents: input, text: features,
                 timestep: sigmas[step], layout: layout, cache: &prefixCache,
                 control: control, controlContext: controlContext, controlScale: scale,
                 controlCache: &controlCache)
+            if let negativeFeatures = prepared.negativeFeatures, let negativeLayout {
+                eval(prediction)
+                try Task.checkCancellation()
+                let negative = try transformer.predict(latents: input, text: negativeFeatures,
+                    timestep: sigmas[step], layout: negativeLayout, cache: &negativePrefixCache,
+                    control: control, controlContext: controlContext, controlScale: scale,
+                    controlCache: &negativeControlCache)
+                prediction = Self.classifierFreeGuidance(positive: prediction, negative: negative, scale: request.trueCFGScale)
+            }
             previousControlEnabled = controlEnabled
             latents = Self.eulerStep(latents, prediction: prediction,
                 delta: sigmas[step + 1] - sigmas[step])
@@ -242,6 +304,8 @@ actor LocalImageService {
         }
         prefixCache.removeAll()
         controlCache.removeAll()
+        negativePrefixCache.removeAll()
+        negativeControlCache.removeAll()
         try Task.checkCancellation()
         progress("解码并保存图像…", 0.92)
         let rgba = try vae.decode(latents.reshaped(1, height, width, 64))
@@ -256,6 +320,11 @@ actor LocalImageService {
 
     /// Accumulate in FP32 so small denoising updates aren't rounded before the
     /// addition. The model's activation stream retains its original dtype.
+    static func classifierFreeGuidance(positive: MLXArray, negative: MLXArray, scale: Float) -> MLXArray {
+        let neg = negative.asType(.float32)
+        return (neg + scale * (positive.asType(.float32) - neg)).asType(positive.dtype)
+    }
+
     static func eulerStep(_ latents: MLXArray, prediction: MLXArray, delta: Float) -> MLXArray {
         (latents.asType(.float32) + prediction.asType(.float32) * MLXArray(delta)).asType(latents.dtype)
     }
@@ -311,6 +380,14 @@ actor LocalImageService {
         return .init(image: CIImage(cgImage: cg), rgba: rgba)
     }
 
+    static func referenceProcessing(size: CGSize) -> UserInput.Processing {
+        // The canvas is already aligned to 32 pixels. Qwen-Image needs four
+        // VAE tokens per merged vision token; Qwen3-VL's default 1,280-token
+        // chat budget must not downsize this image independently of the VAE.
+        let pixels = Int(size.width) * Int(size.height)
+        return .init(resize: size, minPixels: pixels, maxPixels: pixels)
+    }
+
     private static func encodePrompt(_ prompt: String, reference: CIImage?, directory: URL) async throws -> (MLXArray, [Bool]) {
         let folder = directory.appendingPathComponent("text_encoder")
         let config = try JSONDecoder().decode(Qwen3VLConfiguration.self, from: Data(contentsOf: folder.appendingPathComponent("config.json")))
@@ -335,7 +412,7 @@ actor LocalImageService {
             from: Data(contentsOf: processorDirectory.appendingPathComponent("preprocessor_config.json")))
         let processor = Qwen3VLProcessor(processorConfig, tokenizer: bridge)
         var input = UserInput(prompt: .text(prompt), images: reference.map { [.ciImage($0)] } ?? [])
-        if let reference { input.processing.resize = reference.extent.size }
+        if let reference { input.processing = referenceProcessing(size: reference.extent.size) }
         let prepared = try await processor.prepare(input: input)
         let output = try encoder.prepare(prepared, cache: [], state: nil,
             prefill: .init(stepSize: prepared.text.tokens.size + 1, chunking: .unchunked))
@@ -348,7 +425,7 @@ actor LocalImageService {
         return (result, ids.dropFirst(drop).map { $0 == imageID })
     }
 
-    private static func png(_ rgba: MLXArray) throws -> Data {
+    static func png(_ rgba: MLXArray) throws -> Data {
         let width = rgba.dim(2), height = rgba.dim(1)
         let pixels = MLX.round(clip((rgba[0] + 1) * 127.5, min: 0, max: 255)).asType(.uint8).asArray(UInt8.self)
         guard let provider = CGDataProvider(data: Data(pixels) as CFData),

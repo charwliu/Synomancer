@@ -1,6 +1,8 @@
 import Foundation
 import ImageIO
 import MLX
+import MLXLMCommon
+import MLXVLM
 import Synchronization
 @preconcurrency import CoreImage
 
@@ -8,6 +10,24 @@ import Synchronization
 struct LocalImageSmoke {
     static func main() async throws {
         setbuf(stdout, nil)
+        if CommandLine.arguments.contains("--flux2-dev-parity") {
+            try await Flux2DevTests.run(URL(fileURLWithPath: CommandLine.arguments[2]),
+                metadata: URL(fileURLWithPath: CommandLine.arguments[3]))
+            return
+        }
+        if CommandLine.arguments.contains("--flux1-parity") {
+            try await Flux1Tests.run(URL(fileURLWithPath: CommandLine.arguments[2]),
+                cacheRoot: URL(fileURLWithPath: CommandLine.arguments[1]))
+            return
+        }
+        if CommandLine.arguments.contains("--flux2-parity") {
+            try Flux2KleinTests.run(URL(fileURLWithPath: CommandLine.arguments[2]))
+            return
+        }
+        if CommandLine.arguments.contains("--reference-sizes") {
+            try await referenceSizes()
+            return
+        }
         if CommandLine.arguments.contains("--parity") {
             try parity(URL(fileURLWithPath: CommandLine.arguments[2]))
             return
@@ -15,9 +35,29 @@ struct LocalImageSmoke {
         let cache = SpeechCacheAccess.Configuration(path: CommandLine.arguments[1], bookmark: nil)
         let output = URL(fileURLWithPath: CommandLine.arguments[2])
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        if CommandLine.arguments.contains("--flux2-checks") {
+            try await Flux2KleinTests.checks(cache: cache)
+            return
+        }
+        if CommandLine.arguments.contains("--model-benchmark") {
+            let index = CommandLine.arguments.firstIndex(of: "--size")
+            let size = index.map { Int(CommandLine.arguments[$0 + 1])! } ?? 768
+            try await ImageModelPerformanceTests.run(cache: cache, output: output, size: size)
+            return
+        }
+        if CommandLine.arguments.contains("--flux1") {
+            let sizeIndex = CommandLine.arguments.firstIndex(of: "--size")
+            let size = sizeIndex.map { Int(CommandLine.arguments[$0 + 1])! } ?? 512
+            try await Flux1Tests.generate(cache: cache, output: output, size: size)
+            return
+        }
         let service = LocalImageService()
         let models = try await service.models(cache: cache)
-        guard let model = models.first(where: { $0.quantized }) else { fatalError("A complete native MLX Qwen-Image-2.1 cache is required") }
+        let flux2 = CommandLine.arguments.contains("--flux2")
+        let dev = CommandLine.arguments.contains("--flux2-dev")
+        guard let model = models.first(where: {
+            dev ? $0.family == .flux2Dev : flux2 ? $0.family == .flux2Klein9B : ($0.family == .qwenImage21 && $0.quantized)
+        }) else { throw LocalImageError.unavailable }
         if CommandLine.arguments.contains("--prefix-benchmark") {
             try await prefixBenchmark(cache: cache, model: model)
             return
@@ -32,7 +72,12 @@ struct LocalImageSmoke {
         print("MODEL \(model.id), \(Double(model.bytes) / 1e9) GB")
         var request = LocalImageRequest(modelID: model.id,
             prompt: "A studio photograph of a bright red ceramic coffee mug on a plain light gray table, soft daylight, photorealistic, no text.",
-            width: size, height: size, steps: 40, seed: 42)
+            width: size, height: size, steps: model.family.defaultSteps, seed: 42,
+            guidance: Float(model.family.defaultGuidance))
+        if let index = CommandLine.arguments.firstIndex(of: "--negative-prompt") {
+            request.negativePrompt = CommandLine.arguments[index + 1]
+        }
+        if let index = CommandLine.arguments.firstIndex(of: "--steps") { request.steps = Int(CommandLine.arguments[index + 1])! }
         if let index = CommandLine.arguments.firstIndex(of: "--reference") {
             request.reference = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
             request.prompt = "Change the bright red ceramic coffee mug to a vivid blue ceramic coffee mug. Keep the mug shape, handle, table, background, lighting and camera angle unchanged."
@@ -56,6 +101,7 @@ struct LocalImageSmoke {
         try checkImage(edited.png, size: size)
         precondition(edited.png != generated.png)
         print("PASS: actual native single-reference editing PNG, \(edited.seconds)s")
+        if flux2 || dev { print("FLUX.2 peak MLX memory: \(Double(Memory.peakMemory) / 1e9) GB") }
         if CommandLine.arguments.contains("--repeat") {
             let stages = Mutex<[String]>([])
             let repeated = try await service.generate(request, cache: cache) { stage, _ in
@@ -170,6 +216,35 @@ struct LocalImageSmoke {
             timestep: 0.25, layout: layout, cache: &cache)
         close(cached, tensors["cached"]!, "reference DiT cached pass")
         close(cached, tensors["uncached"]!, "cached vs full reference")
+        var request = LocalImageRequest(modelID: "fixture", prompt: "test", negativePrompt: "blur")
+        for family in [LocalImageFamily.qwenImage21, .flux1Dev] { try request.validateNegativePrompt(for: family) }
+        for family in [LocalImageFamily.flux2Dev, .flux2Klein9B] {
+            do { try request.validateNegativePrompt(for: family); preconditionFailure("Unsupported negative prompt accepted") }
+            catch LocalImageError.invalid { }
+        }
+        for scale: Float in [1, 0, .nan, .infinity, 11] {
+            request.trueCFGScale = scale
+            do { try request.validateNegativePrompt(for: .qwenImage21); preconditionFailure("Invalid CFG accepted") }
+            catch LocalImageError.invalid { }
+        }
+        request.negativePrompt = " \n "
+        precondition(request.activeNegativePrompt == nil)
+        try request.validateNegativePrompt(for: .flux2Dev)
+        let cfg = try MLX.loadArrays(url: folder.appendingPathComponent("cfg.safetensors"))
+        for editing in [false, true] {
+            let name = editing ? "edit" : "generate"
+            let shapes = editing ? [(2, 2), (4, 4)] : [(4, 4)]
+            let positiveLayout = try QwenImage21Layout(imageSlots: editing ? [false, true, false] : [false, false, false], shapes: shapes, axes: transformer.axes)
+            let negativeLayout = try QwenImage21Layout(imageSlots: editing ? [false, false, true, false, false] : Array(repeating: false, count: 5), shapes: shapes, axes: transformer.axes)
+            let input = editing ? tensors["latents"]! : tensors["latents"]![0..., 4..., 0...]
+            var positiveCache: [(MLXArray, MLXArray)] = [], negativeCache: [(MLXArray, MLXArray)] = []
+            for (i, sigma) in [Float(0.75), 0.25].enumerated() {
+                let positive = try transformer.predict(latents: input, text: tensors["text"]!, timestep: sigma, layout: positiveLayout, cache: &positiveCache)
+                let negative = try transformer.predict(latents: input, text: cfg["negative_text"]!, timestep: sigma, layout: negativeLayout, cache: &negativeCache)
+                close(LocalImageService.classifierFreeGuidance(positive: positive, negative: negative, scale: 2), cfg["\(name)_\(i)"]!, "true CFG \(name) cache pass \(i)")
+            }
+        }
+        print("PASS: negative prompt CFG reference parity, separate caches/lengths, empty prompt and unsupported-model validation")
         let vae = try QwenImage21VAE(weights: QwenImage21Weights(directory: folder.appendingPathComponent("vae")),
             config: LocalImageModelCache.json(folder.appendingPathComponent("vae/config.json")))
         let images = try MLX.loadArrays(url: folder.appendingPathComponent("vae-inputs.safetensors"))
@@ -245,6 +320,45 @@ struct LocalImageSmoke {
         precondition(abs(controlInputs["full"]! - controlInputs["zero"]!).max().item(Float.self) > 0.001)
         print("PASS: nonzero Union branches match CPU reference at all injection layers and zero strength restores base")
         print("PASS: native DiT prefix caching, original causal VAE conversion and Euler match CPU Diffusers")
+    }
+
+    static func referenceSizes() async throws {
+        // Match the actual Qwen-Image processor: 16px patches, 2x spatial
+        // merge, and a large configured ceiling. The chat default still caps it.
+        let config = try JSONDecoder().decode(Qwen3VLProcessorConfiguration.self, from: Data(#"{"image_mean":[0.5,0.5,0.5],"image_std":[0.5,0.5,0.5],"patch_size":16,"merge_size":2,"temporal_patch_size":2,"image_processor_type":"Qwen2VLImageProcessorFast","size":{"shortest_edge":65536,"longest_edge":16777216}}"#.utf8))
+        let processor = Qwen3VLProcessor(config, tokenizer: ReferenceSizeTokenizer())
+        for (width, height) in [(256, 256), (512, 512), (768, 768), (1024, 1024),
+                                (1280, 1024), (1152, 1152), (1536, 1024), (1024, 1536),
+                                (2048, 2048), (256, 2048)] {
+            let size = CGSize(width: width, height: height)
+            let image = CIImage(color: .red).cropped(to: CGRect(origin: .zero, size: size))
+            var input = UserInput(prompt: .text("fixture"), images: [.ciImage(image)])
+            if width == 1152 {
+                input.processing.resize = size
+                let old = try await processor.prepare(input: input)
+                let slots = old.text.tokens.asArray(Int.self).map { $0 == 2 }
+                precondition(slots.filter { $0 }.count != width * height / 1024)
+                do {
+                    _ = try QwenImage21Layout(imageSlots: slots,
+                        shapes: [(height / 16, width / 16), (height / 16, width / 16)], axes: [16, 56, 56])
+                    preconditionFailure("The old resize-only path must reproduce the mismatch")
+                } catch LocalImageError.invalid(let message) {
+                    precondition(message == "视觉编码器与 VAE 的参考图尺寸不一致")
+                }
+                print("PASS: reproduced the original 1152x1152 mismatch with the default vision budget")
+            }
+            input.processing = LocalImageService.referenceProcessing(size: size)
+            let prepared = try await processor.prepare(input: input)
+            let frame = prepared.image!.frames![0]
+            precondition(frame.t == 1 && frame.h == height / 16 && frame.w == width / 16)
+            eval(prepared.image!.pixels)
+            let slots = prepared.text.tokens.asArray(Int.self).map { $0 == 2 }
+            precondition(slots.filter { $0 }.count == width * height / 1024)
+            let layout = try QwenImage21Layout(imageSlots: slots,
+                shapes: [(height / 16, width / 16), (height / 16, width / 16)], axes: [16, 56, 56])
+            precondition(layout.imageIndices.size == 2 * width * height / 256)
+            print("PASS: \(width)x\(height) vision grid matches VAE and DiT layout")
+        }
     }
 
     static func checks(_ service: LocalImageService, cache: SpeechCacheAccess.Configuration, model: LocalImageModel) async throws {
@@ -326,6 +440,21 @@ struct LocalImageSmoke {
             preconditionFailure("Invalid matrix dimensions must throw before launching a kernel")
         } catch LocalImageError.unsupported { print("PASS: incompatible dimensions fail before a Metal kernel") }
     }
+}
+
+/// A three-token prompt isolates image preprocessing from tokenizer/model weights.
+private struct ReferenceSizeTokenizer: MLXLMCommon.Tokenizer {
+    func encode(text: String, addSpecialTokens: Bool) -> [Int] {
+        [1] + Array(repeating: 2, count: text.components(separatedBy: "<|image_pad|>").count - 1) + [3]
+    }
+    func decode(tokenIds: [Int], skipSpecialTokens: Bool) -> String { "fixture" }
+    func convertTokenToId(_ token: String) -> Int? { token == "<|image_pad|>" ? 2 : nil }
+    func convertIdToToken(_ id: Int) -> String? { id == 2 ? "<|image_pad|>" : nil }
+    var bosToken: String? { nil }
+    var eosToken: String? { nil }
+    var unknownToken: String? { nil }
+    func applyChatTemplate(messages: [[String: any Sendable]], tools: [[String: any Sendable]]?,
+                           additionalContext: [String: any Sendable]?) throws -> [Int] { [1, 2, 3] }
 }
 
 private actor ImageCancellationProbe {

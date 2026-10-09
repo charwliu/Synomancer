@@ -5,11 +5,34 @@ import ImageIO
 @MainActor
 final class ImageStudioStore: ObservableObject {
     @Published var models: [LocalImageModel] = []
-    @Published var modelID = ""
-    @Published var prompt = ""
-    @Published var reference: Data? {
-        didSet { if let reference { matchReferenceSize(reference) } }
+    @Published var modelID = "" {
+        didSet {
+            guard oldValue != modelID else { return }
+            steps = selectedFamily.defaultSteps
+            guidance = selectedFamily.defaultGuidance
+            trueCFGScale = selectedFamily.defaultTrueCFGScale
+            if !selectedFamily.supportsControl { clearControl() }
+            if !selectedFamily.supportsReference { reference = nil }
+        }
     }
+    var selectedFamily: LocalImageFamily { models.first(where: { $0.id == modelID })?.family ?? .qwenImage21 }
+    @Published var prompt = ""
+    @Published var negativePrompt = ""
+    @Published var trueCFGScale = 2.0
+    @Published var reference: Data? {
+        didSet {
+            if describingReference {
+                promptRequest = nil; task?.cancel(); status = ""
+            }
+            promptDraft = ""; promptError = nil
+            if let reference { matchReferenceSize(reference) }
+        }
+    }
+    @Published var promptModels: [LocalChatModel] = []
+    @Published var promptModelID = ""
+    @Published var promptDraft = ""
+    @Published private(set) var promptError: String?
+    @Published private(set) var describingReference = false
     @Published var result: LocalImageResult?
     @Published var upscaleBackend: ImageUpscaleBackend = .apple
     @Published var upscaleSize: ImageUpscaleSize = .fourK
@@ -22,6 +45,7 @@ final class ImageStudioStore: ObservableObject {
     @Published var width = 768
     @Published var height = 768
     @Published var steps = 40
+    @Published var guidance = 3.5
     @Published var seed = "42"
     @Published var controlSource: Data?
     @Published var control: LocalControlMapResult?
@@ -40,7 +64,50 @@ final class ImageStudioStore: ObservableObject {
     private var revision = UUID()
     private var extraction: Task<Void, Never>?
     private var extractionRevision = UUID()
-    var busy: Bool { generating || extracting || upscaling || preparingUpscale }
+    private var promptRequest: UUID?
+    typealias PromptGenerator = @Sendable (String, Data, SpeechCacheAccess.Configuration) async throws -> String
+    private let promptGenerator: PromptGenerator
+
+    init(promptGenerator: @escaping PromptGenerator = { model, image, cache in
+        try await LocalReferencePromptService.generate(modelID: model, image: image, cache: cache)
+    }) {
+        self.promptGenerator = promptGenerator
+    }
+
+    var busy: Bool { generating || extracting || upscaling || preparingUpscale || describingReference }
+
+    func describeReference() {
+        guard !busy, let image = reference else { return }
+        guard promptModels.contains(where: { $0.id == promptModelID && $0.supportsImages }) else {
+            promptError = LocalReferencePromptService.PromptError.modelUnavailable.localizedDescription
+            return
+        }
+        let id = UUID(), model = promptModelID, cache = SpeechCacheAccess.configuration()
+        promptRequest = id; describingReference = true; stopping = false
+        promptDraft = ""; promptError = nil; status = "正在识别参考图并生成提示词…"
+        task = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let draft = try await promptGenerator(model, image, cache)
+                try Task.checkCancellation()
+                if promptRequest == id {
+                    promptDraft = draft; status = "提示词已生成，请确认后使用"
+                }
+            } catch is CancellationError {
+                if promptRequest == id { status = "已停止生成提示词" }
+            } catch {
+                if promptRequest == id { promptError = error.localizedDescription; status = "提示词生成失败" }
+            }
+            // No replacement request can start until this worker has settled.
+            describingReference = false; stopping = false; task = nil; promptRequest = nil
+        }
+    }
+
+    func usePromptDraft() {
+        guard !busy, reference != nil, !promptDraft.isEmpty else { return }
+        prompt = promptDraft
+        promptDraft = ""
+    }
 
     private func matchReferenceSize(_ data: Data) {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
@@ -63,6 +130,16 @@ final class ImageStudioStore: ObservableObject {
 
     func reload() async {
         guard !busy else { return }
+        do {
+            let available = try await LocalChatService.shared.models(cache: SpeechCacheAccess.configuration())
+            try Task.checkCancellation()
+            promptModels = available.filter(\.supportsImages)
+            if !promptModels.contains(where: { $0.id == promptModelID }) {
+                promptModelID = promptModels.first?.id ?? ""
+            }
+            promptError = nil
+        } catch is CancellationError { return }
+        catch { promptModels = []; promptModelID = ""; promptError = error.localizedDescription }
         upscaleAvailability = await LocalImageUpscaleService.shared.availability(cache: SpeechCacheAccess.configuration())
         do {
             models = try await LocalImageService.shared.models(cache: SpeechCacheAccess.configuration())
@@ -78,7 +155,8 @@ final class ImageStudioStore: ObservableObject {
         guard let value = UInt64(seed) else { error = "随机种子必须是非负整数。"; return }
         let request = LocalImageRequest(modelID: modelID, prompt: prompt, reference: reference,
             width: width, height: height, steps: steps, seed: value,
-            control: control?.png, controlScale: Float(controlScale), controlEnd: Float(controlEnd))
+            control: control?.png, controlScale: Float(controlScale), controlEnd: Float(controlEnd), guidance: Float(guidance),
+            negativePrompt: selectedFamily.supportsNegativePrompt ? negativePrompt : "", trueCFGScale: Float(trueCFGScale))
         let cache = SpeechCacheAccess.configuration()
         let generation = UUID()
         revision = generation
@@ -109,7 +187,7 @@ final class ImageStudioStore: ObservableObject {
             extraction?.cancel(); stopping = true; status = "正在停止提取…"
             return
         }
-        guard generating || upscaling || preparingUpscale else { return }
+        guard generating || upscaling || preparingUpscale || describingReference else { return }
         stopping = true; status = "正在停止…"; task?.cancel()
     }
 
@@ -153,13 +231,13 @@ final class ImageStudioStore: ObservableObject {
     }
 
     func setControlSource(_ data: Data) {
-        guard !generating else { return }
+        guard !generating && !describingReference else { return }
         controlSource = data
         refreshControl()
     }
 
     func refreshControl() {
-        guard !generating, let source = controlSource else { return }
+        guard !generating && !describingReference, let source = controlSource else { return }
         extraction?.cancel()
         let id = UUID(); extractionRevision = id
         let kind = controlKind, w = width, h = height, cache = SpeechCacheAccess.configuration()
@@ -183,7 +261,7 @@ final class ImageStudioStore: ObservableObject {
     }
 
     func clearControl() {
-        guard !generating else { return }
+        guard !generating && !describingReference else { return }
         extraction?.cancel(); extractionRevision = UUID(); extraction = nil
         extracting = false; stopping = false; control = nil; controlSource = nil
         status = ""; error = nil

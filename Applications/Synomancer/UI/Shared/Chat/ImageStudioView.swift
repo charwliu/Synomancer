@@ -40,8 +40,28 @@ struct ImageStudioView: View {
                 }
                 .disabled(store.busy)
                 .accessibilityLabel("图片描述或编辑指令")
+            if store.selectedFamily.supportsNegativePrompt {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("负面提示词（可选）").font(.callout)
+                    TextField("不希望出现的内容，例如：模糊、水印、多余手指", text: $store.negativePrompt, axis: .vertical)
+                        .lineLimit(1...4)
+                        .textFieldStyle(.roundedBorder)
+                    if !store.negativePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Stepper("负面 CFG 强度 \(store.trueCFGScale.formatted(.number.precision(.fractionLength(1))))",
+                                value: $store.trueCFGScale, in: 1.1...10, step: 0.1)
+                        Text(store.selectedFamily == .flux1Dev
+                             ? "FLUX.1 建议从 1.1 开始；较高强度可能导致模糊。每步增加一次去噪计算。"
+                             : "启用后每步增加一次去噪计算；强度过高可能影响画质。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }.disabled(store.busy)
+            } else {
+                Text("当前 FLUX.2 模型不支持独立负面提示词，请在描述中写明期望的画面特征。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             HStack {
                 Button("选择参考照片…") { importingControl = false; importing = true }
+                    .disabled(!store.selectedFamily.supportsReference)
                 if store.reference != nil {
                     Button("移除参考照片") { store.reference = nil }
                 }
@@ -57,10 +77,25 @@ struct ImageStudioView: View {
                         Text(verbatim: String(size)).tag(size)
                     }
                 }.labelsHidden().frame(width: 75)
-                Stepper("步数 \(store.steps)", value: $store.steps, in: 10...60, step: 5).frame(width: 140)
+                Stepper("步数 \(store.steps)", value: $store.steps, in: 2...60, step: 1).frame(width: 140)
                 TextField("随机种子", text: $store.seed).frame(width: 90)
             }.disabled(store.busy)
-            controlOptions
+            if store.reference != nil { referencePromptOptions }
+            if store.selectedFamily == .flux1Dev || store.selectedFamily == .flux2Dev {
+                HStack {
+                    Stepper("Guidance \(store.guidance.formatted(.number.precision(.fractionLength(1))))", value: $store.guidance, in: 0...10, step: 0.5)
+                        .frame(width: 180)
+                    Text(store.selectedFamily == .flux2Dev
+                         ? "FLUX.2-dev · 文生图和参考图编辑 · 默认 28 步、Guidance 4"
+                         : "FLUX.1-dev 文生图 · 默认 28 步、Guidance 3.5")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.disabled(store.busy)
+            }
+            if store.selectedFamily == .flux2Klein9B {
+                Text("FLUX.2 Klein 9B · 文生图和参考图编辑 · 默认 4 步")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if store.selectedFamily.supportsControl { controlOptions }
             upscaleOptions
             HStack(alignment: .top, spacing: 16) {
                 if let reference = store.reference { preview(reference, title: "参考照片") }
@@ -92,13 +127,14 @@ struct ImageStudioView: View {
                 Text(error).foregroundStyle(.red).font(.callout).textSelection(.enabled)
             }
             HStack {
-                Text("Qwen-Image-2.1 · Swift + MLX · 本地 HF_HOME").font(.caption).foregroundStyle(.secondary)
+                Text("\(store.selectedFamily.rawValue) · Swift + MLX · 本地 HF_HOME").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 if store.busy {
                     Button(store.stopping ? "正在停止…" : "停止") { store.stop() }.disabled(store.stopping)
                 } else {
                     if let image = store.displayedPNG {
                         Button("继续编辑这张图") { store.reference = image; store.prompt = "" }
+                            .disabled(!store.selectedFamily.supportsReference)
                         Button("保存 PNG…") { exportingControl = false; exporting = true }
                     }
                     Button(store.control != nil ? "按控制图生成" : store.reference == nil ? "生成照片" : "编辑照片") { store.generate() }
@@ -114,6 +150,9 @@ struct ImageStudioView: View {
 #endif
         .appleIntelligenceEffect(active: store.busy)
         .task(id: home) { await store.reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .hfModelDownloadCompleted)) { _ in
+            if !store.busy { Task { await store.reload() } }
+        }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
             do {
                 let url = try result.get()
@@ -134,6 +173,37 @@ struct ImageStudioView: View {
         .onDisappear {
             store.stop()
             Task { await LocalImageService.shared.clearSessionCache() }
+        }
+    }
+
+    private var referencePromptOptions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Picker("识图模型", selection: $store.promptModelID) {
+                    ForEach(store.promptModels) { Text($0.id).tag($0.id) }
+                }
+                Button("从参考图生成提示词") { store.describeReference() }
+                    .disabled(store.promptModels.isEmpty)
+            }.disabled(store.busy)
+            Text("使用本地视觉模型描述参考图，先预览后填入；具体修改要求可再补充。")
+                .font(.caption).foregroundStyle(.secondary)
+            if store.promptModels.isEmpty {
+                Text("HF_HOME 中没有可用的视觉模型。请准备支持图片输入的模型后点击刷新。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if let error = store.promptError {
+                Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled)
+            }
+            if !store.promptDraft.isEmpty {
+                ScrollView {
+                    Text(store.promptDraft).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }.frame(maxHeight: 160)
+                HStack {
+                    Button(store.prompt.isEmpty ? "填入提示词" : "替换当前提示词") { store.usePromptDraft() }
+                    Button("丢弃草稿") { store.promptDraft = "" }
+                }.disabled(store.busy)
+            }
         }
     }
 

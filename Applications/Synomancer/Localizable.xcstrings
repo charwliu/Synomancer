@@ -4,6 +4,9 @@
     "" : {
       "shouldTranslate" : false
     },
+    "· %lld tokens" : {
+
+    },
     "%.2f" : {
       "shouldTranslate" : false
     },
@@ -16,6 +19,22 @@
           }
         }
       }
+    },
+    "%@ · Swift + MLX · 本地 HF_HOME" : {
+
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ tokens/s" : {
+
     },
     "%lld" : {
       "localizations" : {
@@ -46,6 +65,16 @@
       },
       "shouldTranslate" : false
     },
+    "%lld 个文件 · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld 个文件 · %2$@"
+          }
+        }
+      }
+    },
     "%lld%%" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -65,6 +94,9 @@
 
     },
     "×" : {
+
+    },
+    "≈" : {
 
     },
     "About" : {
@@ -99,12 +131,6 @@
     "Accounts" : {
 
     },
-    "API" : {
-
-    },
-    "API Base URL" : {
-
-    },
     "API Key" : {
 
     },
@@ -117,7 +143,7 @@
     "Appearance" : {
 
     },
-    "Apply OpenAI Settings" : {
+    "Apply Gemini Settings" : {
 
     },
     "Are you sure you want to delete '%@'?" : {
@@ -211,9 +237,6 @@
           }
         }
       }
-    },
-    "Chat Completions (compatible)" : {
-
     },
     "Chat Models" : {
 
@@ -377,6 +400,9 @@
           }
         }
       }
+    },
+    "Commit %@" : {
+
     },
     "Completions" : {
 
@@ -733,7 +759,7 @@
     "Edit" : {
 
     },
-    "Enable OpenAI models" : {
+    "Enable Gemini models" : {
 
     },
     "Endpoint" : {
@@ -868,6 +894,21 @@
         }
       }
     },
+    "FLUX.1 建议从 1.1 开始；较高强度可能导致模糊。每步增加一次去噪计算。" : {
+
+    },
+    "FLUX.1-dev 文生图 · 默认 28 步、Guidance 3.5" : {
+
+    },
+    "FLUX.2 Klein 9B · 文生图和参考图编辑 · 默认 4 步" : {
+
+    },
+    "FLUX.2-dev · 文生图和参考图编辑 · 默认 28 步、Guidance 4" : {
+
+    },
+    "Gemini" : {
+
+    },
     "General" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -961,6 +1002,9 @@
     "Generating Local Speech…" : {
 
     },
+    "Get a Gemini API key" : {
+
+    },
     "GPU Cache Limit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -990,7 +1034,13 @@
         }
       }
     },
+    "Guidance %@" : {
+
+    },
     "hello" : {
+
+    },
+    "HF Token（可选）" : {
 
     },
     "HF_HOME" : {
@@ -1000,6 +1050,9 @@
 
     },
     "HF_HOME 中尚未找到 RealESRGAN_x4plus 超分模型。" : {
+
+    },
+    "HF_HOME 中没有可用的视觉模型。请准备支持图片输入的模型后点击刷新。" : {
 
     },
     "How can I help today?" : {
@@ -1493,10 +1546,10 @@
         }
       }
     },
-    "No chat model found. Choose HF_HOME or configure OpenAI." : {
+    "No chat model found. Choose HF_HOME or configure Gemini." : {
 
     },
-    "No chat model is available. Choose HF_HOME for local MLX or configure OpenAI in Settings." : {
+    "No chat model is available. Choose HF_HOME for local MLX or configure Gemini in Settings." : {
 
     },
     "No Conversation" : {
@@ -1567,12 +1620,6 @@
 
     },
     "Open Settings" : {
-
-    },
-    "OpenAI" : {
-
-    },
-    "OpenAI Responses" : {
 
     },
     "Please enter Hugging Face Repo ID" : {
@@ -1726,9 +1773,6 @@
         }
       }
     },
-    "Qwen-Image-2.1 · Swift + MLX · 本地 HF_HOME" : {
-
-    },
     "Qwen3-ASR 1.7B" : {
 
     },
@@ -1863,6 +1907,9 @@
     "Respond in current **Window**." : {
 
     },
+    "Revision" : {
+
+    },
     "Running: http://127.0.0.1:%u/v1" : {
 
     },
@@ -1933,7 +1980,7 @@
     "Select text generation models to add to the chat menu." : {
 
     },
-    "Selecting an OpenAI model sends conversation text to the configured API. Local MLX remains available." : {
+    "Selecting a Gemini model sends conversation text to Google Gemini. Local MLX remains available." : {
 
     },
     "Send" : {
@@ -2207,6 +2254,9 @@
           }
         }
       }
+    },
+    "Token 仅保留在本次 App 会话中。受限仓库还需在 Hugging Face 网页接受访问条款。" : {
+
     },
     "Top P" : {
       "extractionState" : "stale",
@@ -2505,7 +2555,31 @@
     "下载 Apple 超分模型" : {
 
     },
+    "下载 HF 模型" : {
+
+    },
+    "下载全部仓库文件" : {
+
+    },
+    "下载到 HF_HOME" : {
+
+    },
+    "不希望出现的内容，例如：模糊、水印、多余手指" : {
+
+    },
+    "丢弃草稿" : {
+
+    },
+    "从参考图生成提示词" : {
+
+    },
+    "仓库名（namespace/model）" : {
+
+    },
     "使用参考照片" : {
+
+    },
+    "使用本地视觉模型描述参考图，先预览后填入；具体修改要求可再补充。" : {
 
     },
     "保存 PNG…" : {
@@ -2521,6 +2595,9 @@
 
     },
     "刷新" : {
+
+    },
+    "启用后每步增加一次去噪计算；强度过高可能影响画质。" : {
 
     },
     "启用控制图后按结构生成照片；参考照片用于提取深度或姿态。提示词请描述完整目标画面。" : {
@@ -2548,10 +2625,16 @@
     "图片描述或编辑指令" : {
 
     },
+    "填入提示词" : {
+
+    },
     "始终从生成原图超分，建议使用 1024 原图。4K 按原比例输出长边 3840 像素；保存 PNG 导出当前显示的版本。" : {
 
     },
     "尺寸" : {
+
+    },
+    "当前 FLUX.2 模型不支持独立负面提示词，请在描述中写明期望的画面特征。" : {
 
     },
     "当前系统或设备不支持 Apple 图片超分，请选择 RealESRGAN。" : {
@@ -2610,10 +2693,19 @@
     "显示超分结果" : {
 
     },
+    "替换当前提示词" : {
+
+    },
     "本地图像" : {
 
     },
     "本地模型" : {
+
+    },
+    "本地生成速度，不含加载和提示词处理；生成中为估算值，完成后为引擎统计值。" : {
+
+    },
+    "检查模型" : {
 
     },
     "正在停止…" : {
@@ -2678,6 +2770,15 @@
         }
       }
     },
+    "识图模型" : {
+
+    },
+    "负面 CFG 强度 %@" : {
+
+    },
+    "负面提示词（可选）" : {
+
+    },
     "超分后端" : {
 
     },
@@ -2703,6 +2804,9 @@
 
     },
     "高度" : {
+
+    },
+    "默认下载模型文件；已知 FLUX 仓库只下载分组件，避免重复整包。完成的文件会复用，中断可继续下载。模型需与 App 支持的格式兼容。" : {
 
     }
   },

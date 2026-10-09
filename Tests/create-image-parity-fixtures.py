@@ -112,3 +112,30 @@ with torch.no_grad():
             control_context=context, control_context_scale=scale).sample[:, -16:].contiguous()
 save_file(control_inputs, root / "control-inputs.safetensors")
 print("PASS: CPU reference fixtures: two-layer DiT including reference/cache, residual RGBA VAE and Euler schedule")
+
+# True CFG: independent positive/negative text lengths and reference-prefix caches.
+from safetensors.torch import load_file
+cfg_model = QwenImage21Transformer2DModel.from_pretrained(root / "transformer").eval()
+for block in cfg_model.transformer_blocks:
+    block.attn.set_processor(QwenImage21AttnProcessor())
+cfg_input = load_file(root / "dit-inputs.safetensors")
+cfg_values = {}
+with torch.no_grad(), torch.random.fork_rng():
+    torch.manual_seed(731)
+    neg_text = torch.randn(1, 5, 16)
+    cfg_values["negative_text"] = neg_text
+    for editing in [False, True]:
+        name = "edit" if editing else "generate"
+        x = cfg_input["latents"] if editing else cfg_input["latents"][:, -16:]
+        shape = [[(1, 2, 2), (1, 4, 4)]] if editing else [[(1, 4, 4)]]
+        pos_mask = torch.tensor([[False, True, False, True, True, True, True]]) if editing else torch.tensor([[False, False, False, True, True, True, True]])
+        neg_mask = torch.tensor([[False, False, True, False, False, True, True, True, True]]) if editing else torch.tensor([[False, False, False, False, False, True, True, True, True]])
+        pos_cache, neg_cache = QwenImage21KVCache(2), QwenImage21KVCache(2)
+        for i, t in enumerate([0.75, 0.25]):
+            mode = "extract" if i == 0 else "cached"
+            pos = cfg_model(x, cfg_input["text"], torch.tensor([t]), img_shapes=shape,
+                img_mask=pos_mask, kv_cache=pos_cache, kv_cache_mode=mode).sample[:, -16:]
+            neg = cfg_model(x, neg_text, torch.tensor([t]), img_shapes=shape,
+                img_mask=neg_mask, kv_cache=neg_cache, kv_cache_mode=mode).sample[:, -16:]
+            cfg_values[f"{name}_{i}"] = (neg + 2.0 * (pos - neg)).contiguous()
+save_file(cfg_values, root / "cfg.safetensors")
