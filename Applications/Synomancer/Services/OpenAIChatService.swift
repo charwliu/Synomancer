@@ -48,7 +48,7 @@ actor OpenAIChatService {
                   temperature: Float = 0.6,
                   onUpdate: @escaping @Sendable (String, Int) -> Void) async throws -> LocalChatResult {
         guard !messages.contains(where: { $0.image != nil }) else {
-            throw OpenAIError.message("OpenAI image input is not enabled in this version.")
+            throw OpenAIError.message("Remote image input is not enabled in this version.")
         }
         let history = messages.map { ["role": $0.role, "content": $0.content] }
         var body: [String: Any] = ["model": modelID, "stream": true]

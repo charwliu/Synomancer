@@ -17,7 +17,7 @@ struct SettingsView: View {
     @Binding var defaultModel: String
     @Binding var appUserInitials: String
     @Binding var voiceIdentifier: String
-    @Binding var openAIKey: String
+    @Binding var geminiKey: String
     var save: () -> ()
     var refreshModels: () -> ()
     var deleteAll: () -> ()
@@ -72,7 +72,7 @@ struct SettingsView: View {
                 HuggingFaceSettings(onDownloadComplete: refreshModels)
                 LocalSpeechSettings()
                 LocalTTSSettings()
-                OpenAISettings(refreshModels: refreshModels, apiKey: $openAIKey)
+                GeminiSettings(refreshModels: refreshModels, apiKey: $geminiKey)
                 LocalChatAPISettings()
                 Section(header: Text("Chat Models").font(.headline)) {
                     
@@ -104,7 +104,7 @@ struct SettingsView: View {
                     }
                     
                     if localModels.isEmpty {
-                        Text("No chat model found. Choose HF_HOME or configure OpenAI.")
+                        Text("No chat model found. Choose HF_HOME or configure Gemini.")
                             .foregroundStyle(.secondary)
                     } else {
                         Picker(selection: $defaultModel) {
@@ -211,7 +211,7 @@ struct SettingsView: View {
         defaultModel: .constant("mlx-community/Qwen2-VL-2B-Instruct-4bit"),
         appUserInitials: .constant("AM"),
         voiceIdentifier: .constant("sample"),
-        openAIKey: .constant(""),
+        geminiKey: .constant(""),
         save: {},
         refreshModels: {},
         deleteAll: {},

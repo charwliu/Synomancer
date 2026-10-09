@@ -46,7 +46,7 @@ final class LanguageModelStore {
         let request = UUID()
         discoveryID = request
         do {
-            let remoteIDs = OpenAIConfiguration.modelIDs(in: preferences)
+            let remoteIDs = GeminiConfiguration.modelIDs(in: preferences)
             var localModels: [LocalChatModel] = []
             do {
                 let cache = remoteIDs.isEmpty
@@ -69,9 +69,9 @@ final class LanguageModelStore {
                 available.append(model)
             }
             for id in remoteIDs {
-                let name = "openai:" + id
-                let model = stored.first(where: { $0.name == name && $0.modelProvider == .openai })
-                    ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .openai)
+                let name = "gemini:" + id
+                let model = stored.first(where: { $0.name == name && $0.modelProvider == .gemini })
+                    ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .gemini)
                 model.isAvailable = true
                 available.append(model)
             }

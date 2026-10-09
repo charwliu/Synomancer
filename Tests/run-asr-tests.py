@@ -39,7 +39,13 @@ parser.add_argument('--tts-continuity', action='store_true', help='Compare real 
 parser.add_argument('--tts-streaming', action='store_true', help='Benchmark batch/streaming TTS and verify streamed audio with ASR')
 parser.add_argument('--streaming', action='store_true', help='Use the public 20s Qwen3ASR fixture to verify live partial revisions')
 parser.add_argument('--playback', action='store_true', help='Test app synthesis/playback/stop using isolated settings and muted output')
+parser.add_argument('--remote-store-only', action='store_true', help='Test remote model discovery and saved conversations without local inference')
+parser.add_argument('--remote-api-only', action='store_true', help='Run remote API HTTP fixtures without local inference or personal keys')
 args = parser.parse_args()
+if args.remote_store_only:
+    args.chat_store = True
+if args.remote_api_only:
+    args.chat_api = True
 if args.metal_validation:
     os.environ['MTL_DEBUG_LAYER'] = '1'
 if not args.components_only and not args.tts and not args.tts_streaming and not args.tts_continuity and not args.playback and not args.chat and not args.chat_store and not args.chat_api and not args.chat_library and not args.chat_mtp and not args.chat_reasoning and not args.chat_moe and not args.chat_tokenizer and not args.image and not args.image_parity and not args.image_checks and args.audio is None:
@@ -124,7 +130,7 @@ elif args.image:
         image_command += ['--prompt', args.image_prompt]
     subprocess.run(image_command, check=True, cwd=products)
 elif args.chat or args.chat_store or args.chat_api or args.chat_library or args.chat_mtp or args.chat_reasoning or args.chat_moe or args.chat_tokenizer:
-    subprocess.run([str(executable), str(args.cache.resolve()), *([args.model] if args.model else [])], check=True, cwd=products)
+    subprocess.run([str(executable), str(args.cache.resolve()), *([args.model] if args.model else []), *(["--remote-only"] if args.remote_api_only or args.remote_store_only else [])], check=True, cwd=products)
 elif args.playback:
     subprocess.run([str(executable), str(args.cache.resolve())], check=True, cwd=products)
 elif args.tts or args.tts_streaming or args.tts_continuity:

@@ -1,12 +1,10 @@
 import SwiftUI
 
-struct OpenAISettings: View {
+struct GeminiSettings: View {
     var refreshModels: () -> Void
-    @AppStorage("openAIEnabled") private var enabled = false
-    @AppStorage("openAIBaseURL") private var baseURL = "https://api.openai.com/v1"
-    @AppStorage("openAIProtocol") private var apiProtocol = "responses"
-    @AppStorage("openAIModels") private var modelIDs = ""
-    @AppStorage("openAISendTemperature") private var sendTemperature = false
+    @AppStorage("geminiEnabled") private var enabled = false
+    @AppStorage("geminiModels") private var modelIDs = ""
+    @AppStorage("geminiSendTemperature") private var sendTemperature = false
     @Binding var apiKey: String
     @State private var status = ""
     @State private var fetching = false
@@ -14,25 +12,24 @@ struct OpenAISettings: View {
     @State private var showModels = false
 
     var body: some View {
-        Section("OpenAI") {
-            Toggle("Enable OpenAI models", isOn: $enabled)
-            Text("Selecting an OpenAI model sends conversation text to the configured API. Local MLX remains available.")
+        Section("Gemini") {
+            Toggle("Enable Gemini models", isOn: $enabled)
+            Text("Selecting a Gemini model sends conversation text to Google Gemini. Local MLX remains available.")
                 .font(.caption).foregroundStyle(.secondary)
-            TextField("API Base URL", text: $baseURL)
-                .autocorrectionDisabled()
+            Link("Get a Gemini API key", destination: URL(string: "https://aistudio.google.com/apikey")!)
             SecureField("API Key", text: $apiKey)
                 .autocorrectionDisabled()
-            Picker("API", selection: $apiProtocol) {
-                Text("OpenAI Responses").tag("responses")
-                Text("Chat Completions (compatible)").tag("chat")
-            }
             Toggle("Send temperature parameter", isOn: $sendTemperature)
             Text("Keep temperature disabled for models that do not support it.")
                 .font(.caption).foregroundStyle(.secondary)
             Text("Model IDs (one per line)")
-            TextEditor(text: $modelIDs).font(.system(.body, design: .monospaced)).frame(minHeight: 65)
+            TextField("Model IDs (one per line)", text: $modelIDs, axis: .vertical)
+                .labelsHidden()
+                .font(.system(.body, design: .monospaced))
+                .lineLimit(1...8)
+                .autocorrectionDisabled()
             HStack {
-                Button("Apply OpenAI Settings") { apply() }
+                Button("Apply Gemini Settings") { apply() }
                 Button(fetching ? "Loading…" : "Choose API Models…") { fetch() }
                     .disabled(!enabled || fetching)
             }
@@ -63,8 +60,8 @@ struct OpenAISettings: View {
     private var selectedIDs: Set<String> { Set(modelIDs.components(separatedBy: .newlines).filter { !$0.isEmpty }) }
     private func apply() {
         do {
-            try ChatSecrets.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: "openai")
-            if enabled { _ = try OpenAIConfiguration.load() }
+            try ChatSecrets.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: GeminiConfiguration.keychainAccount)
+            if enabled { _ = try GeminiConfiguration.load() }
             status = "Settings applied."
             refreshModels()
         } catch { status = error.localizedDescription }
@@ -74,8 +71,8 @@ struct OpenAISettings: View {
         Task {
             defer { fetching = false }
             do {
-                try ChatSecrets.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: "openai")
-                availableIDs = try await OpenAIChatService.shared.models(configuration: OpenAIConfiguration.load())
+                try ChatSecrets.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: GeminiConfiguration.keychainAccount)
+                availableIDs = try await OpenAIChatService.shared.models(configuration: GeminiConfiguration.load())
                 showModels = true
                 status = ""
             } catch { status = error.localizedDescription }

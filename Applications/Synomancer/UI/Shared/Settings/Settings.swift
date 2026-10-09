@@ -27,16 +27,16 @@ struct Settings: View {
 
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     @State private var cancellable: AnyCancellable?
-    @State private var openAIKey = ""
-    @State private var originalOpenAIKey: String?
+    @State private var geminiKey = ""
+    @State private var originalGeminiKey: String?
 
     private func save() {
         do {
             // A failed Keychain read must not turn an untouched empty field into deletion.
-            if openAIKey != (originalOpenAIKey ?? "") {
-                try ChatSecrets.save(openAIKey.trimmingCharacters(in: .whitespacesAndNewlines), account: "openai")
+            if geminiKey != (originalGeminiKey ?? "") {
+                try ChatSecrets.save(geminiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: GeminiConfiguration.keychainAccount)
             }
-            if UserDefaults.standard.bool(forKey: "openAIEnabled") { _ = try OpenAIConfiguration.load() }
+            if UserDefaults.standard.bool(forKey: "geminiEnabled") { _ = try GeminiConfiguration.load() }
         } catch {
             AppStore.shared.uiLog(message: error.localizedDescription, status: .error)
             return
@@ -71,7 +71,7 @@ struct Settings: View {
             defaultModel: $defaultMLXModel,
             appUserInitials: $appUserInitials,
             voiceIdentifier: $voiceIdentifier,
-            openAIKey: $openAIKey,
+            geminiKey: $geminiKey,
             save: save,
             refreshModels: refreshModels,
             deleteAll: deleteAll,
@@ -81,9 +81,9 @@ struct Settings: View {
         .frame(maxWidth: 700)
         .task {
             do {
-                let stored = try ChatSecrets.read("openai")
-                openAIKey = stored
-                originalOpenAIKey = stored
+                let stored = try ChatSecrets.read(GeminiConfiguration.keychainAccount)
+                geminiKey = stored
+                originalGeminiKey = stored
             }
             catch { AppStore.shared.uiLog(message: error.localizedDescription, status: .error) }
         }

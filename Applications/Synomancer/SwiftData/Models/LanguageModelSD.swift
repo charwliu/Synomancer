@@ -33,11 +33,19 @@ final class LanguageModelSD: Identifiable {
 // MARK: - Helpers
 extension LanguageModelSD {
     var requestModelID: String {
-        modelProvider == .openai && name.hasPrefix("openai:") ? String(name.dropFirst(7)) : name
+        switch modelProvider {
+        case .gemini: return name.hasPrefix("gemini:") ? String(name.dropFirst(7)) : name
+        case .openai: return name.hasPrefix("openai:") ? String(name.dropFirst(7)) : name
+        default: return name
+        }
     }
 
     var displayName: String {
-        modelProvider == .openai ? "OpenAI · " + requestModelID : name
+        switch modelProvider {
+        case .gemini: return "Gemini · " + requestModelID
+        case .openai: return "OpenAI · " + requestModelID
+        default: return name
+        }
     }
 
     var prettyName: String {

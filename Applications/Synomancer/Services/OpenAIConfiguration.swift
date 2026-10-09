@@ -54,31 +54,39 @@ struct OpenAIConfiguration: Sendable {
     let apiKey: String
     let useResponses: Bool
     let sendTemperature: Bool
-
-    @MainActor static func load(in preferences: UserDefaults = .standard) throws -> Self {
-        guard preferences.bool(forKey: "openAIEnabled") else { throw OpenAIError.message("OpenAI is disabled in Settings.") }
-        let address = preferences.string(forKey: "openAIBaseURL") ?? "https://api.openai.com/v1"
-        guard let url = URL(string: address), let host = url.host, url.user == nil, url.password == nil,
-              url.query == nil, url.fragment == nil,
-              url.scheme == "https" || (url.scheme == "http" && ["127.0.0.1", "localhost", "::1"].contains(host)) else {
-            throw OpenAIError.message("Use an HTTPS API base URL, or HTTP on localhost.")
-        }
-        let key = try ChatSecrets.read("openai")
-        guard !key.isEmpty else { throw OpenAIError.message("Save an OpenAI API key in Settings.") }
-        return Self(baseURL: url, apiKey: key,
-                    useResponses: (preferences.string(forKey: "openAIProtocol") ?? "responses") == "responses",
-                    sendTemperature: preferences.bool(forKey: "openAISendTemperature"))
-    }
-
-    @MainActor static func modelIDs(in preferences: UserDefaults = .standard) -> [String] {
-        guard preferences.bool(forKey: "openAIEnabled") else { return [] }
-        let raw = preferences.string(forKey: "openAIModels") ?? ""
-        return Array(Set(raw.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty })).sorted()
-    }
 }
 
 enum OpenAIError: LocalizedError {
     case message(String)
     var errorDescription: String? { if case .message(let text) = self { text } else { nil } }
+}
+
+// Google owns this endpoint; the wire format is Chat Completions compatible.
+// Separate preferences and Keychain account prevent sending an old OpenAI key to Google.
+enum GeminiConfiguration {
+    static let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai")!
+    static let keychainAccount = "gemini"
+
+    static func transport(apiKey: String, sendTemperature: Bool = false) throws -> OpenAIConfiguration {
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { throw OpenAIError.message("Save a Gemini API key in Settings.") }
+        return OpenAIConfiguration(baseURL: baseURL, apiKey: key, useResponses: false,
+                                   sendTemperature: sendTemperature)
+    }
+
+    @MainActor static func load(in preferences: UserDefaults = .standard) throws -> OpenAIConfiguration {
+        guard preferences.bool(forKey: "geminiEnabled") else {
+            throw OpenAIError.message("Gemini is disabled in Settings.")
+        }
+        return try transport(apiKey: ChatSecrets.read(keychainAccount),
+                             sendTemperature: preferences.bool(forKey: "geminiSendTemperature"))
+    }
+
+    @MainActor static func modelIDs(in preferences: UserDefaults = .standard) -> [String] {
+        guard preferences.bool(forKey: "geminiEnabled") else { return [] }
+        return Array(Set((preferences.string(forKey: "geminiModels") ?? "")
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty })).sorted()
+    }
 }

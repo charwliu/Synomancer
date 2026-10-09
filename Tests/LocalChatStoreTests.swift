@@ -13,7 +13,7 @@ struct LocalChatStoreTests {
         let schema = Schema([LanguageModelSD.self, ConversationSD.self, MessageSD.self, CompletionInstructionSD.self])
         let database = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
         let data = SwiftDataService(modelContainer: database)
-        let legacy = LanguageModelSD(name: "legacy-ollama:latest", modelProvider: .ollama)
+        let legacy = LanguageModelSD(name: "openai:legacy-model", modelProvider: .openai)
         let oldConversation = ConversationSD(name: "Legacy conversation")
         oldConversation.model = legacy
         let originalUser = MessageSD(content: "The passphrase is REDWOOD-472.", role: "user")
@@ -35,13 +35,16 @@ struct LocalChatStoreTests {
         precondition(!models.models.isEmpty && models.models.allSatisfy { $0.modelProvider == .mlx })
         let savedModels = try data.fetchModels()
         let savedConversations = try data.fetchConversations()
-        precondition(savedModels.contains { $0.name == legacy.name && $0.modelProvider == .ollama })
+        precondition(savedModels.contains { $0.name == legacy.name && $0.modelProvider == .openai })
         precondition(savedConversations.contains { $0.id == oldConversation.id })
         models.setModel(model: legacy)
         let selected = models.selectedModel!
         precondition(selected.modelProvider == .mlx && models.supportsImages == selected.imageSupport)
         precondition(preferences.string(forKey: "defaultMLXModel") == selected.name)
         print("PASS: MLX discovery/selection preserves old provider rows and conversations")
+
+        try await remoteModelTests(data: data, preferences: preferences, models: models)
+        if CommandLine.arguments.contains("--remote-only") { return }
 
         var spoken: [String] = []
         let automatic = AutomaticResponseSpeech(preferences: preferences,
@@ -115,39 +118,52 @@ struct LocalChatStoreTests {
         print("PASS: shortcut completion uses local MLX and queues the complete response")
         precondition(spoken.count == 2)
 
-        preferences.set(true, forKey: "openAIEnabled")
-        preferences.set("fixture-model\nfixture-model\nsecond-model", forKey: "openAIModels")
+    }
+
+    static func remoteModelTests(data: SwiftDataService, preferences: UserDefaults, models: LanguageModelStore) async throws {
+        var spoken: [String] = []
+        let automatic = AutomaticResponseSpeech(preferences: preferences,
+            speak: { spoken.append($0) }, stop: {})
+        let chat = ConversationStore(swiftDataService: data, preferences: preferences, automaticSpeech: automatic)
+        // Legacy OpenAI rows remain readable but cannot reuse their key or invoke Google.
+        do {
+            _ = try await ChatGenerationService.generate(modelID: "legacy-model", provider: .openai,
+                messages: [.init(role: "user", content: "fixture")], preferences: preferences) { _, _ in }
+            preconditionFailure("Legacy OpenAI route must be disabled")
+        } catch { precondition(error.localizedDescription.contains("no longer supported")) }
+        preferences.set(true, forKey: "geminiEnabled")
+        preferences.set("fixture-model\nfixture-model\nsecond-model", forKey: "geminiModels")
         try await models.loadModels()
-        let remote = models.models.first { $0.name == "openai:fixture-model" }!
-        precondition(models.models.filter { $0.modelProvider == .openai }.count == 2)
-        precondition(remote.requestModelID == "fixture-model" && remote.displayName == "OpenAI · fixture-model")
+        let remote = models.models.first { $0.name == "gemini:fixture-model" }!
+        precondition(models.models.filter { $0.modelProvider == .gemini }.count == 2)
+        precondition(remote.requestModelID == "fixture-model" && remote.displayName == "Gemini · fixture-model")
         models.setModel(model: remote)
         precondition(models.selectedModel === remote && !models.supportsImages)
         try await models.loadModels()
-        precondition(models.selectedModel?.modelProvider == .openai)
+        precondition(models.selectedModel?.modelProvider == .gemini)
         // Remote discovery must work when an external HF volume is missing, without a picker.
         preferences.set("/private/tmp/nonexistent-HF-\(UUID())", forKey: SpeechCacheAccess.homeKey)
         try await models.loadModels()
-        precondition(models.models.count == 2 && models.models.allSatisfy { $0.modelProvider == .openai })
-        print("PASS: local/remote model lists, namespaced IDs and OpenAI selection with missing HF_HOME")
+        precondition(models.models.count == 2 && models.models.allSatisfy { $0.modelProvider == .gemini })
+        print("PASS: local/remote model lists, namespaced IDs and Gemini selection with missing HF_HOME")
 
-        preferences.set(false, forKey: "openAIEnabled")
+        preferences.set(false, forKey: "geminiEnabled")
         chat.selectedConversation = nil; chat.messages = []
         chat.sendPrompt(userPrompt: "Remote route fixture", model: remote)
         let remoteStart = Date()
         while chat.conversationState == .loading && Date().timeIntervalSince(remoteStart) < 5 {
             try await Task.sleep(for: .milliseconds(20))
         }
-        if case .error(let error) = chat.conversationState { precondition(error.contains("OpenAI is disabled")) }
-        else { preconditionFailure("Disabled OpenAI must not fall back to MLX") }
-        precondition(spoken.count == 2)
+        if case .error(let error) = chat.conversationState { precondition(error.contains("Gemini is disabled")) }
+        else { preconditionFailure("Disabled Gemini must not fall back to MLX") }
+        precondition(spoken.isEmpty)
         let savedRemote = chat.selectedConversation!
         preferences.set(CommandLine.arguments[1], forKey: SpeechCacheAccess.homeKey)
         try await models.loadModels()
         precondition(models.selectedModel?.modelProvider == .mlx)
         let remoteHistory = try data.fetchConversations()
-        precondition(remoteHistory.contains { $0.id == savedRemote.id && $0.model?.modelProvider == .openai })
-        print("PASS: provider routing rejects disabled OpenAI without MLX fallback; refresh preserves remote conversation")
+        precondition(remoteHistory.contains { $0.id == savedRemote.id && $0.model?.modelProvider == .gemini })
+        print("PASS: provider routing rejects disabled Gemini without MLX fallback; refresh preserves remote conversation")
     }
 
     static func waitForCompletion(_ chat: ConversationStore) async throws {

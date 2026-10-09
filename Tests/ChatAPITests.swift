@@ -6,7 +6,7 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
     static var observed: [String: Data] = [:]
     private let stateLock = NSLock()
     private var stopped = false
-    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "api.fixture.invalid" }
+    override class func canInit(with request: URLRequest) -> Bool { ["api.fixture.invalid", "generativelanguage.googleapis.com"].contains(request.url?.host ?? "") }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let path = request.url!.path
@@ -57,6 +57,7 @@ struct ChatAPITests {
         setbuf(stdout, nil)
         try parserTests()
         try await remoteClientTests()
+        if CommandLine.arguments.contains("--remote-only") { return }
         let cache = SpeechCacheAccess.Configuration(path: CommandLine.arguments[1], bookmark: nil)
         let models = try await LocalChatService.shared.models(cache: cache)
         let model = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : models.first!.id
@@ -98,6 +99,32 @@ struct ChatAPITests {
             .init(baseURL: URL(string: "https://api.fixture.invalid/\(prefix)v1")!, apiKey: "fixture-key", useResponses: responses, sendTemperature: false)
         }
         let messages: [LocalChatMessage] = [.init(role: "system", content: "test"), .init(role: "user", content: "hello")]
+        let gemini = try GeminiConfiguration.transport(apiKey: " fixture-key ")
+        precondition(gemini.baseURL.absoluteString == "https://generativelanguage.googleapis.com/v1beta/openai")
+        precondition(!gemini.useResponses && !gemini.sendTemperature && GeminiConfiguration.keychainAccount == "gemini")
+        let suite = "Synomancer.GeminiTest." + UUID().uuidString
+        let preferences = UserDefaults(suiteName: suite)!
+        defer { preferences.removePersistentDomain(forName: suite) }
+        preferences.set(true, forKey: "openAIEnabled")
+        preferences.set("old-model", forKey: "openAIModels")
+        precondition(GeminiConfiguration.modelIDs(in: preferences).isEmpty)
+        do { _ = try GeminiConfiguration.load(in: preferences); preconditionFailure("Legacy settings must not enable Gemini") }
+        catch { precondition(error.localizedDescription.contains("Gemini is disabled")) }
+        do { _ = try GeminiConfiguration.transport(apiKey: "  "); preconditionFailure("Empty key") }
+        catch { precondition(error.localizedDescription.contains("Gemini API key")) }
+        preferences.set(true, forKey: "geminiEnabled")
+        preferences.set(" gemini-fixture \ngemini-fixture\n", forKey: "geminiModels")
+        precondition(GeminiConfiguration.modelIDs(in: preferences) == ["gemini-fixture"])
+        let result = try await client.generate(modelID: "gemini-fixture", messages: messages, configuration: gemini) { _, _ in }
+        precondition(result.text == "hello MLX" && result.completionTokens == 5 && result.finishReason == "stop")
+        let googleBody = OpenAIFixtureProtocol.body("/v1beta/openai/chat/completions")
+        precondition(googleBody["model"] as? String == "gemini-fixture")
+        precondition(googleBody["input"] == nil && googleBody["store"] == nil && googleBody["temperature"] == nil)
+        precondition((googleBody["messages"] as? [[String: String]]) == messages.map { ["role": $0.role, "content": $0.content] })
+        precondition((googleBody["stream_options"] as? [String: Bool])?["include_usage"] == true)
+        let googleModels = try await client.models(configuration: gemini)
+        precondition(googleModels == ["another-model", "fixture-model"])
+        print("PASS: Gemini endpoint, Bearer auth, isolated settings/key account, history, streaming usage and model discovery (HTTP fixture)")
         let responses = try await client.generate(modelID: "fixture-model", messages: messages, configuration: config()) { _, _ in }
         precondition(responses.text == "你好，MLX" && responses.promptTokens == 12 && responses.completionTokens == 5)
         let sent = OpenAIFixtureProtocol.body("/v1/responses")

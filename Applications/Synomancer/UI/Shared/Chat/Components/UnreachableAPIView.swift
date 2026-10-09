@@ -13,7 +13,7 @@ struct UnreachableAPIView: View {
     var body: some View {
         HStack {
             VStack {
-                Text("No chat model is available. Choose HF_HOME for local MLX or configure OpenAI in Settings.")
+                Text("No chat model is available. Choose HF_HOME for local MLX or configure Gemini in Settings.")
                     .lineLimit(nil)
                     .minimumScaleFactor(0.5)
                     .fontWeight(.medium)
