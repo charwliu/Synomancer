@@ -2078,7 +2078,21 @@
 
     },
     "Synomancer" : {
-      "extractionState" : "manual"
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "思诺曼"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "思諾曼"
+          }
+        }
+      }
     },
     "System prompt" : {
       "localizations" : {

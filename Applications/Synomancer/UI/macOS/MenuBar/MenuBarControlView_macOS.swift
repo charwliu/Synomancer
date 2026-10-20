@@ -23,7 +23,7 @@ struct MenuBarControlView: View {
                             title: "Chat models",
                             subtitle: hasLocalModels ? "Ready" : "Select Model"
                         )
-                        ControlView(icon: "checkmark.circle", title: "Synomancer", subtitle: "Online")
+                        ControlView(icon: "checkmark.circle", title: String(localized: "Synomancer"), subtitle: "Online")
                     }
                     .padding(12)
                     .background {
