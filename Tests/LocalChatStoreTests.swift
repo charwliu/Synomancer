@@ -32,14 +32,14 @@ struct LocalChatStoreTests {
         preferences.set(CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : legacy.name, forKey: "defaultMLXModel")
         let models = LanguageModelStore(swiftDataService: data, preferences: preferences)
         try await models.loadModels()
-        precondition(!models.models.isEmpty && models.models.allSatisfy { $0.modelProvider == .mlx })
+        precondition(!models.models.isEmpty && models.models.allSatisfy { $0.provider == .mlx })
         let savedModels = try data.fetchModels()
         let savedConversations = try data.fetchConversations()
-        precondition(savedModels.contains { $0.name == legacy.name && $0.modelProvider == .openai })
+        precondition(savedModels.contains { $0.name == legacy.name && $0.provider == .openai })
         precondition(savedConversations.contains { $0.id == oldConversation.id })
         models.setModel(model: legacy)
         let selected = models.selectedModel!
-        precondition(selected.modelProvider == .mlx && models.supportsImages == selected.imageSupport)
+        precondition(selected.provider == .mlx && models.supportsImages == selected.imageSupport)
         precondition(preferences.string(forKey: "defaultMLXModel") == selected.name)
         print("PASS: MLX discovery/selection preserves old provider rows and conversations")
 
@@ -56,7 +56,7 @@ struct LocalChatStoreTests {
         let messages = try data.fetchMessages(oldConversation.id)
         precondition(messages.count == 4 && messages.last!.content.contains("REDWOOD-472") && messages.last!.done)
         precondition(messages.last!.displayContent.contains("REDWOOD-472") && !messages.last!.displayContent.contains("</think>"))
-        precondition(oldConversation.model?.modelProvider == .mlx)
+        precondition(oldConversation.model?.provider == .mlx)
         precondition(messages.last!.tokensPerSecond.map { $0.isFinite && $0 > 0 } == true)
         precondition((messages.last!.completionTokens ?? 0) > 0)
         precondition(messages.last!.liveTokensPerSecond == nil)
@@ -135,16 +135,16 @@ struct LocalChatStoreTests {
         preferences.set("fixture-model\nfixture-model\nsecond-model", forKey: "geminiModels")
         try await models.loadModels()
         let remote = models.models.first { $0.name == "gemini:fixture-model" }!
-        precondition(models.models.filter { $0.modelProvider == .gemini }.count == 2)
+        precondition(models.models.filter { $0.provider == .gemini }.count == 2)
         precondition(remote.requestModelID == "fixture-model" && remote.displayName == "Gemini · fixture-model")
         models.setModel(model: remote)
         precondition(models.selectedModel === remote && !models.supportsImages)
         try await models.loadModels()
-        precondition(models.selectedModel?.modelProvider == .gemini)
+        precondition(models.selectedModel?.provider == .gemini)
         // Remote discovery must work when an external HF volume is missing, without a picker.
         preferences.set("/private/tmp/nonexistent-HF-\(UUID())", forKey: SpeechCacheAccess.homeKey)
         try await models.loadModels()
-        precondition(models.models.count == 2 && models.models.allSatisfy { $0.modelProvider == .gemini })
+        precondition(models.models.count == 2 && models.models.allSatisfy { $0.provider == .gemini })
         print("PASS: local/remote model lists, namespaced IDs and Gemini selection with missing HF_HOME")
 
         preferences.set(false, forKey: "geminiEnabled")
@@ -160,9 +160,9 @@ struct LocalChatStoreTests {
         let savedRemote = chat.selectedConversation!
         preferences.set(CommandLine.arguments[1], forKey: SpeechCacheAccess.homeKey)
         try await models.loadModels()
-        precondition(models.selectedModel?.modelProvider == .mlx)
+        precondition(models.selectedModel?.provider == .mlx)
         let remoteHistory = try data.fetchConversations()
-        precondition(remoteHistory.contains { $0.id == savedRemote.id && $0.model?.modelProvider == .gemini })
+        precondition(remoteHistory.contains { $0.id == savedRemote.id && $0.model?.provider == .gemini })
         print("PASS: provider routing rejects disabled Gemini without MLX fallback; refresh preserves remote conversation")
     }
 

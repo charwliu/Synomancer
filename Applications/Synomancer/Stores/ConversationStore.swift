@@ -24,6 +24,8 @@ final class ConversationStore {
     private var firstTokenCount = 0
     var automaticSpeech: AutomaticResponseSpeech?
 
+    var loadingProgress: (label: String, fraction: Double?)?
+
     @MainActor var conversationState: ConversationState = .completed
     @MainActor var conversations: [ConversationSD] = []
     @MainActor var selectedConversation: ConversationSD?
@@ -97,6 +99,7 @@ final class ConversationStore {
     }
     
     @MainActor func stopGenerate() {
+        loadingProgress = nil
         automaticSpeech?.cancel()
         guard requestID != nil else { return }
         generation?.cancel()
@@ -137,7 +140,7 @@ final class ConversationStore {
         assistant.conversation = conversation
         let request = UUID()
         let modelID = model.requestModelID
-        let provider = model.modelProvider
+        let provider = model.provider
         requestID = request
         activeMessage = assistant
         receivedTokens = 0
@@ -155,9 +158,15 @@ final class ConversationStore {
                 messages = try swiftDataService.fetchMessages(conversation.id)
                 selectedConversation = conversation
                 conversations = try swiftDataService.fetchConversations()
-                let result = try await ChatGenerationService.generate(modelID: modelID, provider: provider, messages: history, preferences: preferences) { [self] text, count in
+                let result = try await ChatGenerationService.generate(modelID: modelID, provider: provider, messages: history, preferences: preferences, onProgress: { [self] label, fraction in
+                    Task { @MainActor in
+                        guard self.requestID == request, self.receivedTokens == 0 else { return }
+                        self.loadingProgress = (label, fraction)
+                    }
+                }) { [self] text, count in
                     Task { @MainActor in
                         guard self.requestID == request, count > self.receivedTokens else { return }
+                        self.loadingProgress = nil
                         self.receivedTokens = count
                         self.activeMessage?.content = text
                         if provider == .mlx {
@@ -177,6 +186,7 @@ final class ConversationStore {
                 }
                 try Task.checkCancellation()
                 guard requestID == request else { return }
+                loadingProgress = nil
                 assistant.content = result.text
                 assistant.liveTokensPerSecond = nil
                 if provider == .mlx, result.tokensPerSecond.isFinite, result.tokensPerSecond > 0 {
@@ -194,6 +204,7 @@ final class ConversationStore {
             } catch {
                 guard requestID == request else { return }
                 assistant.liveTokensPerSecond = nil
+                loadingProgress = nil
                 assistant.error = !(error is CancellationError)
                 assistant.done = true
                 try? swiftDataService.updateMessage(assistant)

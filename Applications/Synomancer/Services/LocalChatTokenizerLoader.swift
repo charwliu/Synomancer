@@ -23,7 +23,11 @@ struct LocalChatTokenizerLoader: MLXLMCommon.TokenizerLoader {
         }
         var loader = Self()
         loader.preparedDirectory = model.directory.standardizedFileURL
-        loader.preparedTokenizer = Bridge(upstream: tokenizer)
+        let bridge = Bridge(upstream: tokenizer)
+        loader.preparedTokenizer = bridge
+        if model.modelType == "muse_glimmer" {
+            _ = try LocalMuseGlimmerOutput(tokenizer: bridge)
+        }
         return loader
     }
 

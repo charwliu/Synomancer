@@ -40,6 +40,13 @@ final class Qwen4GGUFModel {
     }
     let sparseAttention = Qwen4GGUFSparseAttention()
     let files: [GGUFFile]
+    private(set) var expertCache: GGUFWeightCache?
+    private(set) var pleCache: GGUFWeightCache?
+    var temporaryExpandedBytes: Int { weights.values.reduce(0) { $0 + $1.temporaryExpandedBytes } }
+    func clearPrefillCaches() {
+        // Call after evaluated prefill outputs, or at the next decode boundary.
+        for weight in weights.values { weight.clearPrefillCache() }
+    }
     var weights: [String: GGUFTensor] = [:]
     var denseWeights: [String: MLXArray] = [:]
     var caches = (0..<48).map { _ in Cache() }
@@ -81,7 +88,7 @@ final class Qwen4GGUFModel {
     let offsets: [Int64]
     let vocabSizes: [Int64]
 
-    init(firstShard: URL) throws {
+    init(firstShard: URL, pagedPLE: Bool = true, expertBudget: Int? = GGUFMemoryPolicy.expertBudget(), onProgress: @Sendable (Double) -> Void = { _ in }) throws {
         let second = firstShard.deletingLastPathComponent().appendingPathComponent(firstShard.lastPathComponent.replacingOccurrences(of: "00001-of", with: "00002-of"))
         guard firstShard != second else { throw GGUFFile.Failure(message: "Expected first split IQ3_S shard") }
         files = try [GGUFFile(url: firstShard), GGUFFile(url: second)]
@@ -107,11 +114,28 @@ final class Qwen4GGUFModel {
             throw GGUFFile.Failure(message: "Unsupported PLE shape")
         }
         try Self.validate(files)
+        expertCache = expertBudget.map { GGUFWeightCache(budget: $0) }
+        pleCache = pagedPLE ? GGUFWeightCache(budget: 16 * 1024 * 1024, maximumEntries: 8192) : nil
+        func cache(for tensor: GGUFFile.Tensor) -> GGUFWeightCache? {
+            if tensor.name == "per_layer_token_embd.weight" { return pleCache }
+            if tensor.name.hasSuffix("_exps.weight") { return expertCache }
+            return nil
+        }
+        let totalBytes = files.reduce(0) { $0 + $1.tensors.values.reduce(0) { $0 + (cache(for: $1) == nil ? $1.byteCount : 0) } }
+        var loadedBytes = 0
+        var lastPercent = -1
+        onProgress(0)
         for file in files {
             for tensor in file.tensors.values {
                 try Task.checkCancellation()
                 guard weights[tensor.name] == nil else { throw GGUFFile.Failure(message: "Duplicate shard tensor") }
-                weights[tensor.name] = try GGUFTensor(file: file, tensor: tensor)
+                weights[tensor.name] = try GGUFTensor(file: file, tensor: tensor, cache: cache(for: tensor))
+                loadedBytes += cache(for: tensor) == nil ? tensor.byteCount : 0
+                let percent = Int(100 * Double(loadedBytes) / Double(max(1, totalBytes)))
+                if percent != lastPercent {
+                    lastPercent = percent
+                    onProgress(Double(loadedBytes) / Double(max(1, totalBytes)))
+                }
             }
         }
     }
@@ -182,7 +206,8 @@ final class Qwen4GGUFModel {
         Qwen4GGUFOps.inject([x, branch, gates])[0]
     }
     func moe(_ x: MLXArray, _ p: String) -> MLXArray {
-        if compiledExperts && !fastPrefill, let graph = expertGraphs[p] { return graph(x) }
+        let graphKey = p + "pr9-\(Qwen4GGUFDecodeKernels.mask & 9)"
+        if expertCache == nil && compiledExperts && !fastPrefill, let graph = expertGraphs[graphKey] { return graph(x) }
         let weights: [GGUFTensor]
         if let cached = expertWeights[p] { weights = cached }
         else {
@@ -191,28 +216,46 @@ final class Qwen4GGUFModel {
             weights = names.map { tensor(p + $0 + ".weight") }
             expertWeights[p] = weights
         }
-        if compiledExperts && !fastPrefill {
+        if expertCache == nil && compiledExperts && !fastPrefill {
             // Capture tensors, not the model, so graph ownership cannot retain
             // the model through a cycle. Request caches are not part of MoE.
             let captured = ExpertGraphWeights(values: weights)
             let graph = compile { input in Qwen4GGUFModel.experts(input, weights: captured.values, prefill: false) }
-            expertGraphs[p] = graph
+            expertGraphs[graphKey] = graph
             return graph(x)
         }
         return Self.experts(x, weights: weights, prefill: fastPrefill)
     }
     static func experts(_ x: MLXArray, weights: [GGUFTensor], prefill: Bool) -> MLXArray {
         let gates = softmax(weights[0].linear(x, prefill: prefill), axis: -1, precise: true)
-        let ids = argPartition(gates, kth: -10, axis: -1)[.ellipsis, 502...]
+        let ids = Qwen4GGUFDecodeKernels.top10(gates)
         var scores = takeAlong(gates, ids, axis: -1)
         scores = scores / sum(scores, axis: -1, keepDims: true)
-        let routing = prefill && x.dim(1) >= 128 ? GGUFExpertRoutes(ids: ids, experts: 512) : nil
-        let gate = weights[1].gathered(x, ids: ids, repeats: 10, routing: routing)
-        let up = weights[2].gathered(x, ids: ids, repeats: 10, routing: routing)
-        let output = weights[3].gathered(Qwen4GGUFOps.swiglu(gate, up), ids: ids, repeats: 1, routing: routing)
-        let routed = sum(output * scores.expandedDimensions(axis: -1), axis: -2)
+        let selectedIDs: MLXArray
+        let selectedWeights: [GGUFTensor]
+        let expertCount: Int
+        if weights[1].isFileBacked {
+            // One GPU-to-host routing boundary per layer. Sorting preserves
+            // expert order for grouped prefill; remapping preserves top-k order.
+            let original = ids.asArray(Int.self)
+            let unique = Array(Set(original)).sorted()
+            let mapping = Dictionary(uniqueKeysWithValues: unique.enumerated().map { ($1, UInt32($0)) })
+            selectedIDs = MLXArray(original.map { mapping[$0]! }).reshaped(ids.shape)
+            selectedWeights = (1...3).map { weights[$0].selectedRecords(unique, expert: true) }
+            expertCount = unique.count
+        } else {
+            selectedIDs = ids; selectedWeights = Array(weights[1...3]); expertCount = 512
+        }
+        let routing = prefill && x.dim(1) >= 128 ? GGUFExpertRoutes(ids: selectedIDs, experts: expertCount) : nil
+        let gate = selectedWeights[0].gathered(x, ids: selectedIDs, repeats: 10, routing: routing)
+        let up = selectedWeights[1].gathered(x, ids: selectedIDs, repeats: 10, routing: routing)
+        let output = selectedWeights[2].gathered(Qwen4GGUFOps.swiglu(gate, up), ids: selectedIDs, repeats: 1, routing: routing)
         let shared = weights[6].linear(Qwen4GGUFOps.swiglu(weights[4].linear(x, prefill: prefill), weights[5].linear(x, prefill: prefill)), prefill: prefill)
-        return routed + sigmoid(weights[7].linear(x, prefill: prefill)) * shared
+        let result = Qwen4GGUFDecodeKernels.combine(output, scores: scores, gate: weights[7].linear(x, prefill: prefill), shared: shared)
+        // Complete this layer before staging the next one. Otherwise lazy
+        // graphs retain every evicted expert until the full forward is read.
+        if weights[1].isFileBacked { eval(result) }
+        return result
     }
     // GGUF stores GDN value heads repeat-major; native MLX uses key-head-major.
     func inverseHeads(_ x: MLXArray, dim: Int) -> MLXArray {
@@ -239,7 +282,7 @@ final class Qwen4GGUFModel {
         }
         let convState = caches[i].conv ?? MLXArray.zeros([1, 3, 10240], dtype: x.dtype)
         let capture = capturingPrefix
-        let graphKey = i * 2 + (capture ? 1 : 0)
+        let graphKey = i * 16 + (capture ? 8 : 0) + (Qwen4GGUFDecodeKernels.mask & 6)
         let values: [MLXArray]
         if compiledGDN && !fastPrefill && length <= 8, let recurrent = caches[i].recurrent {
             let graph: @Sendable ([MLXArray]) -> [MLXArray]
@@ -267,16 +310,20 @@ final class Qwen4GGUFModel {
         let z = weights.gate.linear(x, prefill: prefill).reshaped([1, length, 48, 128])
         let a = weights.alpha.linear(x, prefill: prefill)
         let b = weights.beta.linear(x, prefill: prefill)
-        let input = concatenated([state, qkv], axis: 1)
-        let conv = silu(conv1d(input, weights.convolution, groups: 10240))
+        let input: MLXArray, conv: MLXArray
+        if let fused = Qwen4GGUFDecodeKernels.convSilu(qkv, state: state, weight: weights.convolution) {
+            (conv, input) = fused
+        } else {
+            input = concatenated([state, qkv], axis: 1)
+            conv = silu(conv1d(input, weights.convolution, groups: 10240))
+        }
         let q = conv[.ellipsis, ..<2048].reshaped([1, length, 16, 128])
         let k = conv[.ellipsis, 2048..<4096].reshaped([1, length, 16, 128])
         let v = conv[.ellipsis, 4096...].reshaped([1, length, 48, 128])
         let normalizedQK = Qwen4GGUFOps.normalizeQK([q, k])
         let (output, nextState) = gatedDeltaUpdate(q: normalizedQK[0], k: normalizedQK[1], v: v,
             a: a, b: b, aLog: weights.aLog, dtBias: weights.bias, state: recurrent)
-        let normalized = MLXFast.rmsNorm(output, weight: weights.norm, eps: 1e-6)
-        let gated = Qwen4GGUFOps.floatSigmoidGate(normalized, z).asType(x.dtype)
+        let gated = Qwen4GGUFDecodeKernels.gatedNorm(output, weight: weights.norm, gate: z).asType(x.dtype)
         let projectedInput = weights.projection.nativeGDNHeads ? gated.reshaped([1, length, 6144])
             : gated.reshaped([1, length, 16, 3, 128]).swappedAxes(-3, -2).reshaped([1, length, 6144])
         let result = [weights.projection.linear(projectedInput, prefill: prefill), input[0..., length..., 0...], nextState]
@@ -457,6 +504,7 @@ final class Qwen4GGUFModel {
     /// IDs on-device between speculative steps and synchronize candidates once.
     func draftForward(_ tokenIDs: MLXArray, count: Int, hidden: MLXArray, prefill: Bool = false) -> MLXArray {
         precondition(count > 0 && tokenIDs.size == count)
+        if !prefill { clearPrefillCaches() }
         fastPrefill = prefill
         defer { fastPrefill = false }
         let length = count, prefix = "blk.48."
@@ -525,6 +573,7 @@ final class Qwen4GGUFModel {
         precondition(!capturePrefix || (!prefill && tokens.count <= 8))
         gdnReplay.removeAll(); pleReplay.removeAll()
         capturingPrefix = capturePrefix
+        if !prefill { clearPrefillCaches() }
         fastPrefill = prefill
         defer { fastPrefill = false; capturingPrefix = false }
         let embeddings = tensor("token_embd.weight").embedding(MLXArray(tokens.map(UInt32.init))).reshaped([1, tokens.count, 2560])

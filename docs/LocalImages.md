@@ -670,3 +670,13 @@ python3 Tests/run-asr-tests.py \
 图片生成中文描述通过，包含首次加载约 54.9 秒；这是单个样例的端到端耗时。
 同一图片使用 Gemma-4 31B 8bit 的实际识图也通过，包含首次加载约 31.6 秒，
 正确描述红色陶瓷杯、右侧把手和浅灰背景；该数据不是持续生成速度基准。
+
+### Chat model residency during image work
+
+Local image generation and editing reserve the chat service's generation gate.
+They wait for the current chat to finish, then release its model, MTP draft,
+vision weights, prompt checkpoint and allocator cache before loading image
+weights. New local chats wait until image work and GPU cleanup finish, including
+on cancellation or error. The next chat lazily reloads its selected model.
+Merely opening Image Studio does not unload chat. Remote Gemini requests do not
+use this local model gate.

@@ -28,7 +28,7 @@ final class LanguageModelStore {
     
     @MainActor
     func setModel(model: LanguageModelSD?) {
-        if let model, let available = models.first(where: { $0.name == model.name && $0.modelProvider == model.modelProvider }) {
+        if let model, let available = models.first(where: { $0.name == model.name && $0.provider == model.provider }) {
             selectedModel = available
         } else {
             let preferred = preferences.string(forKey: "defaultMLXModel")
@@ -62,16 +62,18 @@ final class LanguageModelStore {
             let stored = try swiftDataService.fetchModels()
             var available: [LanguageModelSD] = []
             for local in localModels {
-                let model = stored.first(where: { $0.name == local.id && $0.modelProvider == .mlx })
+                let model = stored.first(where: { $0.name == local.id })
                     ?? LanguageModelSD(name: local.id, imageSupport: local.supportsImages, modelProvider: .mlx)
+                model.provider = .mlx
                 model.imageSupport = local.supportsImages
                 model.isAvailable = true
                 available.append(model)
             }
             for id in remoteIDs {
                 let name = "gemini:" + id
-                let model = stored.first(where: { $0.name == name && $0.modelProvider == .gemini })
+                let model = stored.first(where: { $0.name == name })
                     ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .gemini)
+                model.provider = .gemini
                 model.isAvailable = true
                 available.append(model)
             }

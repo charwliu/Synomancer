@@ -31,7 +31,7 @@ final class CompletionsPanelVM {
         let prompt = Self.constructPrompt(completion: completion, selectedText: selectedText)
         let request = UUID()
         let modelID = model.requestModelID
-        let provider = model.modelProvider
+        let provider = model.provider
         let temperature = Float(completion.modelTemperature ?? 0.8)
         requestID = request
         isReady = true

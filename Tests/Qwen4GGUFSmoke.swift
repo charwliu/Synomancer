@@ -1,11 +1,41 @@
 import Foundation
+import Darwin
 import MLX
 
 @main
 struct Qwen4GGUFSmoke {
+    static func memoryStatistics(_ model: Qwen4GGUFModel) {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let status = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        print("MEMORY MLX active", MLX.Memory.activeMemory, "MLX peak", MLX.Memory.peakMemory,
+              "expert bytes", model.expertCache?.bytes ?? 0, "expert hits", model.expertCache?.hits ?? 0,
+              "expert misses", model.expertCache?.misses ?? 0, "PLE bytes", model.pleCache?.bytes ?? 0,
+              "footprint", status == KERN_SUCCESS ? info.phys_footprint : 0)
+        if let cache = model.expertCache { precondition(cache.bytes <= cache.budget) }
+        if let cache = model.pleCache { precondition(cache.bytes <= cache.budget) }
+        precondition(model.temporaryExpandedBytes == 0)
+    }
     static func main() async throws {
         setbuf(stdout, nil)
         let args = CommandLine.arguments
+        if args.count == 3, args[1] == "--response-probe" {
+            let directory = URL(fileURLWithPath: args[2])
+            let service = LocalQwen4GGUF(directory: directory)
+            for (temperature, mtp) in [(Float(0), false), (Float(0), true), (Float(0.6), false)] {
+                let result = try await service.generate(messages: [.init(role: "user", content: "介绍一下你自己")],
+                    temperature: temperature, maxTokens: 128, topP: 1, stop: [], useMTP: mtp, prefillStepSize: nil) { _, _ in }
+                print("PROBE temperature", temperature, "mtp", mtp, "tokens", result.completionTokens,
+                      "finish", result.finishReason, "text", String(reflecting: result.text))
+                precondition(!AssistantMessageContent(result.text).answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                             "Self-introduction must produce a visible answer")
+            }
+            return
+        }
         if args.count == 2, args[1] == "--kernels" { try GGUFKernelTests.run(); return }
         if args.count == 4, args[1] == "--integration" { try await integration(directory: args[2], image: args[3]); return }
         guard args.count == 3 else { fatalError("usage: Qwen4GGUFSmoke first-shard.gguf input.json") }
@@ -13,7 +43,11 @@ struct Qwen4GGUFSmoke {
         let ticket = WiredMemoryTicket(size: 105 * 1024 * 1024 * 1024, policy: WiredMaxPolicy())
         try await ticket.withWiredLimit {
             let start = Date()
-            let model = try Qwen4GGUFModel(firstShard: URL(fileURLWithPath: args[1]))
+            let resident = ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_RESIDENT"] == "1"
+            let expertGiB = Int(ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_EXPERT_GIB"] ?? "16")!
+            let model = try Qwen4GGUFModel(firstShard: URL(fileURLWithPath: args[1]),
+                pagedPLE: !resident, expertBudget: resident || expertGiB < 0 ? nil : expertGiB * 1024 * 1024 * 1024)
+            print("MEMORY loaded MLX", MLX.Memory.activeMemory, "expert budget", model.expertCache?.budget ?? -1)
             print("Loaded in", Date().timeIntervalSince(start)); fflush(stdout)
             let sidecar = ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_MTP"]
             let draft = try sidecar.map { try Qwen4GGUFMTP(sidecar: URL(fileURLWithPath: $0)) }
@@ -57,7 +91,23 @@ struct Qwen4GGUFSmoke {
                     precondition(strides.allSatisfy { (1...48).contains($0) })
                     runs = strides.map { _ in (0, chunk) }
                 }
+                let orderKey = tokens.count < 128 ? "SYNOMANCER_GGUF_PR9_ORDER" : "SYNOMANCER_GGUF_PR9_LONG_ORDER"
+                let decodeOrder = (ProcessInfo.processInfo.environment[orderKey] ?? ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_ORDER"])?.split(separator: ",").map(String.init)
+                if let decodeOrder {
+                    precondition(decodeOrder.allSatisfy { ["b0", "b1", "b2", "o0", "o1", "o2"].contains($0) })
+                    runs = decodeOrder.map { (Int(String($0.last!))!, chunk) }
+                }
+                let maskKey = tokens.count < 128 ? "SYNOMANCER_GGUF_PR9_MASK_ORDER" : "SYNOMANCER_GGUF_PR9_LONG_MASK_ORDER"
+                let maskOrder = (ProcessInfo.processInfo.environment[maskKey] ?? ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_MASK_ORDER"])?.split(separator: ",").map { Int($0)! }
+                if let maskOrder { precondition(maskOrder.count == runs.count && maskOrder.allSatisfy { (0...15).contains($0) }) }
+                if ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_ABLATION_ONLY"] == "1" { runs = [] }
                 for (runIndex, run) in runs.enumerated() {
+                    if let decodeOrder {
+                        Qwen4GGUFDecodeKernels.enabled = decodeOrder[runIndex].first == "o"
+                        print("PR9", Qwen4GGUFDecodeKernels.enabled ? "optimized" : "baseline", "run", runIndex)
+                    }
+                    if let maskOrder { Qwen4GGUFDecodeKernels.mask = maskOrder[runIndex] }
+                    print("PR9 MASK", Qwen4GGUFDecodeKernels.mask, "thermal", ProcessInfo.processInfo.thermalState.rawValue)
                     model.submissionStride = strides?[runIndex] ?? 2
                     print("SUBMISSION stride", model.submissionStride)
                     let (mode, chunk) = run
@@ -98,6 +148,11 @@ struct Qwen4GGUFSmoke {
                         }
                         print("prefill", mode, end, "top", argMax(logits).item(Int.self))
                     }
+                    eval(logits)
+                    let expandedBefore = model.temporaryExpandedBytes
+                    model.clearPrefillCaches(); draft?.draft.clearPrefillCaches()
+                    MLX.Memory.clearCache()
+                    print("MEMORY released expanded", expandedBefore, "expert cache", model.expertCache?.bytes ?? 0)
                     print("PREFILL seconds", Date().timeIntervalSince(prefillStart), "chunk", chunk, "mode", mode, "active bytes", MLX.Memory.activeMemory, "cache bytes", MLX.Memory.cacheMemory)
                     if mode == -1 {
                         let expected = expected!
@@ -162,11 +217,103 @@ struct Qwen4GGUFSmoke {
                     // The first token comes from prefill, matching the reference benchmark.
                     print("Native decode tokens/s:", Double(max(0, generated.count - 1)) / decodeSeconds, "mode", mode,
                           "proposed", draft?.proposed ?? 0, "accepted", draft?.accepted ?? 0, "rejected rounds", draft?.rejectedRounds ?? 0)
+                    memoryStatistics(model)
                     if mode == 2 { precondition(draft!.forcedRejections == 1, "Forced rejection not exercised") }
+                    if let pause = Int(ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_BENCH_PAUSE_MS"] ?? ""), pause > 0 {
+                        precondition(pause <= 60_000)
+                        print("BENCH pause_ms", pause, "thermal", ProcessInfo.processInfo.thermalState.rawValue)
+                        try await Task.sleep(nanoseconds: UInt64(pause) * 1_000_000)
+                    }
+                }
+                if ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_ABLATION"] == "1",
+                   (tokens.count < 128 || ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_ABLATION_LONG"] != "0"), let expected {
+                    ablateDecode(model, prompt: tokens, continuation: expected)
+                }
+                if ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_PAIRED"] == "1", let expected {
+                    pairedDecode(model, prompt: tokens, continuation: expected)
                 }
             }
         }
     }
+    /// Same state/input, alternate which variant runs first. Timing includes host
+    /// dispatch and GPU completion; comparisons happen outside the timed region.
+    static func pairedDecode(_ model: Qwen4GGUFModel, prompt: [Int], continuation: [Int]) {
+        for length in [1, 4] {
+            model.reset()
+            let chunk = prompt.count >= 1024 ? 1024 : 16
+            for range in Qwen4GGUFModel.prefillRanges(count: prompt.count, step: chunk, separateLast: false) {
+                eval(model.forward(Array(prompt[range]), prefill: chunk >= 128))
+            }
+            model.clearPrefillCaches()
+            MLX.Memory.clearCache()
+            for sample in 0..<min(28, continuation.count / length) {
+                let snapshot = model.snapshot()
+                let input = Array(continuation[(sample*length)..<((sample+1)*length)])
+                var outputs: [Bool: MLXArray] = [:]
+                var times: [Bool: Double] = [:]
+                for optimized in (sample % 2 == 0 ? [false, true] : [true, false]) {
+                    model.restore(snapshot)
+                    Qwen4GGUFDecodeKernels.enabled = optimized
+                    let start = Date()
+                    let output = model.forward(input)
+                    eval(output)
+                    times[optimized] = Date().timeIntervalSince(start) * 1000
+                    outputs[optimized] = output
+                }
+                let delta = max(abs(outputs[false]! - outputs[true]!)).item(Float.self)
+                print("PAIRED tokens", length, "sample", sample, "baseline_ms", times[false]!,
+                      "optimized_ms", times[true]!, "max_delta", delta)
+                precondition(delta == 0, "PR9 changed fixed-input logits")
+            }
+        }
+    }
+
+    /// Balanced cyclic/reversed orders avoid attributing temporal drift to a feature.
+    /// Every candidate sees the identical KV/recurrent state and token window.
+    static func ablateDecode(_ model: Qwen4GGUFModel, prompt: [Int], continuation: [Int]) {
+        let originalMask = Qwen4GGUFDecodeKernels.mask
+        defer { Qwen4GGUFDecodeKernels.mask = originalMask }
+        let masks = ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_ABLATION_MASKS"]?
+            .split(separator: ",").map { Int($0)! } ?? [0, 1, 2, 4, 8, 15, 14, 13, 11, 7]
+        precondition(masks.contains(0) && masks.allSatisfy { (0...15).contains($0) })
+        for length in [1, 2, 4] {
+            model.reset()
+            Qwen4GGUFDecodeKernels.mask = 0
+            let chunk = prompt.count >= 1024 ? 1024 : 16
+            for range in Qwen4GGUFModel.prefillRanges(count: prompt.count, step: chunk, separateLast: false) {
+                eval(model.forward(Array(prompt[range]), prefill: chunk >= 128))
+            }
+            model.clearPrefillCaches(); MLX.Memory.clearCache()
+            let samples = Int(ProcessInfo.processInfo.environment["SYNOMANCER_GGUF_PR9_ABLATION_SAMPLES"] ?? "64")!
+            precondition(samples > 4)
+            for sample in 0..<min(samples, continuation.count / length) {
+                let snapshot = model.snapshot()
+                let input = Array(continuation[(sample*length)..<((sample+1)*length)])
+                let shift = sample % masks.count
+                var order = Array(masks[shift...]) + Array(masks[..<shift])
+                if (sample / masks.count) % 2 != 0 { order.reverse() }
+                var outputs: [Int: MLXArray] = [:]
+                var times: [Int: Double] = [:]
+                for mask in order {
+                    model.restore(snapshot)
+                    Qwen4GGUFDecodeKernels.mask = mask
+                    let start = Date()
+                    let output = model.forward(input)
+                    eval(output)
+                    times[mask] = Date().timeIntervalSince(start) * 1000
+                    outputs[mask] = output
+                }
+                for mask in masks {
+                    let delta = max(abs(outputs[0]! - outputs[mask]!)).item(Float.self)
+                    print("ABLATION window", length, "sample", sample, "mask", mask,
+                          "ms", times[mask]!, "delta_ms", times[mask]! - times[0]!,
+                          "logit_delta", delta, "thermal", ProcessInfo.processInfo.thermalState.rawValue)
+                    precondition(delta == 0, "Ablation changed fixed-input logits")
+                }
+            }
+        }
+    }
+
     static func integration(directory: String, image: String) async throws {
         let cache = SpeechCacheAccess.Configuration(path: directory, bookmark: nil)
         let service = LocalChatService()
@@ -179,6 +326,28 @@ struct Qwen4GGUFSmoke {
         print("TEXT", answer.text, "tokens/s", answer.tokensPerSecond)
         precondition(answer.text.contains("REDWOOD-472"))
         precondition(answer.mtpFallbackReason == nil && answer.proposedDraftTokens != nil)
+        let memoryBeforeUnload = MLX.Memory.activeMemory
+        enum ImageProbeError: Error { case expected }
+        do {
+            try await service.withUnloadedChat {
+                precondition(MLX.Memory.activeMemory + 1024 * 1024 * 1024 < memoryBeforeUnload,
+                             "Image reservation must release loaded chat weights")
+                let (waiting, signal) = AsyncStream<Void>.makeStream()
+                let queuedChat = Task {
+                    try await service.generate(modelID: "nonexistent-model", messages: messages, cache: cache,
+                        onProgress: { _, _ in signal.yield(()) }) { _, _ in }
+                }
+                // The chat has entered generate(), but must not reach model
+                // validation while this image reservation is held.
+                for await _ in waiting { break }
+                queuedChat.cancel()
+                do { _ = try await queuedChat.value; fatalError("Queued chat unexpectedly completed") }
+                catch is CancellationError { }
+                signal.finish()
+                throw ImageProbeError.expected
+            }
+        } catch ImageProbeError.expected { }
+        print("PASS: image reservation unloads chat, blocks new chat and releases its gate after error")
         let visual = try await service.generate(modelID: model.id, messages: [.init(role: "user", content: "请简短描述图片中杯子的颜色和把手方向。", image: Data(contentsOf: URL(fileURLWithPath: image)))], cache: cache, temperature: 0, maxTokens: 64) { text, _ in print("VISION", text) }
         print("VISION FINAL", visual.text, "tokens/s", visual.tokensPerSecond, "proposed", visual.proposedDraftTokens ?? 0, "accepted", visual.acceptedDraftTokens ?? 0)
         precondition(visual.text.contains("蓝") && visual.text.contains("右"))

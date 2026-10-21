@@ -181,6 +181,24 @@ struct Chat: View, Sendable {
             }
 #endif
         }
+        .safeAreaInset(edge: .bottom) {
+            if let progress = conversationStore.loadingProgress {
+                HStack(spacing: 10) {
+                    if let fraction = progress.fraction {
+                        ProgressView(value: fraction).frame(width: 120)
+                        Text(fraction, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit()
+                    } else {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text(progress.label)
+                    Spacer()
+                }
+                .font(.callout)
+                .padding(.horizontal).padding(.vertical, 8)
+                .background(.regularMaterial)
+            }
+        }
         .appleIntelligenceEffect(active: conversationStore.conversationState == .loading)
         .onChange(of: languageModelStore.models, { _, modelsList in
             if languageModelStore.selectedModel == nil {

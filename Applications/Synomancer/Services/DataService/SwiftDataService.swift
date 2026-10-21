@@ -44,10 +44,9 @@ extension ModelContainer {
             let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            logger.error("Unable to read database. Rebuilding the database.")
-            // swiftlint:disable:next force_try
-            try! ModelContainer().deleteAllData()
-            return self.forTypes(forTypes)
+            // Opening/migration failures must never erase the user's history.
+            logger.error("Unable to open database; existing data was preserved: \(error)")
+            fatalError("Unable to open the chat database. Existing data was preserved: \(error)")
         }
     }
 }

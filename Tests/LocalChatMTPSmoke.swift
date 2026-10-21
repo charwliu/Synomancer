@@ -14,6 +14,29 @@ struct LocalChatMTPSmoke {
         precondition(models.contains { $0.id == id }, "Complete target checkpoint is required")
         let prompt = [LocalChatMessage(role: "user", content:
             "Write a Python module implementing fibonacci, factorial, and binary search. Include docstrings, input validation, and examples. /no_think")]
+        if ProcessInfo.processInfo.environment["SYNOMANCER_QWEN_BENCH_PAIRED"] == "1" {
+            let services = [LocalChatService(qwenDenseFusion: false), LocalChatService(qwenDenseFusion: true)]
+            for candidate in services {
+                for mtp in [false, true] {
+                    _ = try await candidate.generate(modelID: id, messages: prompt, cache: cache,
+                        temperature: 0, maxTokens: 16, useMTP: mtp) { _, _ in }
+                }
+            }
+            for mtp in [false, true] {
+                for round in 0..<6 {
+                    var reference: String?
+                    for index in (round % 2 == 0 ? [0, 1] : [1, 0]) {
+                        let result = try await services[index].generate(modelID: id, messages: prompt, cache: cache,
+                            temperature: 0, maxTokens: 128, useMTP: mtp) { _, _ in }
+                        if let reference { precondition(reference == result.text, "Fusion changed greedy output") }
+                        reference = result.text
+                        print("PAIRED round=\(round) fused=\(index == 1) mtp=\(mtp) tokens=\(result.completionTokens) tps=\(result.tokensPerSecond) prefill=\(result.promptSeconds)")
+                    }
+                }
+            }
+            print("PASS: paired dense fusion benchmark, equal real outputs in both modes")
+            return
+        }
         // Compile both paths and load the drafter before timing either path.
         for mtp in [false, true] {
             let warmup = try await service.generate(modelID: id, messages: prompt, cache: cache,
@@ -36,6 +59,16 @@ struct LocalChatMTPSmoke {
         precondition((mtp.proposedDraftTokens ?? 0) > 0 && (mtp.acceptedDraftTokens ?? 0) > 0)
         precondition(mtp.mtpFallbackReason == nil && mtp.finishReason == baseline.finishReason)
         print("PASS: real OptiQ MTP performs target verification with accepted/rejected drafts and correct token usage")
+        if ProcessInfo.processInfo.environment["SYNOMANCER_QWEN_BENCH_REPEAT"] == "1" {
+            for round in 0..<4 {
+                for enabled in (round % 2 == 0 ? [true, false] : [false, true]) {
+                    let result = try await service.generate(modelID: id, messages: prompt, cache: cache,
+                        temperature: 0, maxTokens: 128, useMTP: enabled) { _, _ in }
+                    precondition(result.text == (enabled ? mtp.text : baseline.text))
+                    print("REPEAT round=\(round) mtp=\(enabled) tps=\(result.tokensPerSecond) prefill=\(result.promptSeconds) accepted=\(result.acceptedDraftTokens ?? 0)/\(result.proposedDraftTokens ?? 0)")
+                }
+            }
+        }
 
         let exact = [LocalChatMessage(role: "system", content: "Follow the user’s instruction. Be concise."),
             .init(role: "user", content: "The passphrase is REDWOOD-472."),

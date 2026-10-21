@@ -11,22 +11,26 @@ actor LocalQwen4GGUF {
     private var model: Qwen4GGUFModel?
     private var vision: Qwen4GGUFVision.VisionModel?
     private var tokenizer: (any MLXLMCommon.Tokenizer)?
-    private let ticket = WiredMemoryTicket(size: 105 * 1024 * 1024 * 1024, policy: WiredMaxPolicy())
 
     init(directory: URL) { self.directory = directory }
 
     func generate(messages: [LocalChatMessage], temperature: Float, maxTokens: Int,
                   topP: Float, stop: [String], useMTP: Bool, prefillStepSize: Int? = nil,
+                  onProgress: @escaping @Sendable (String, Double?) -> Void = { _, _ in },
                   onUpdate: @escaping @Sendable (String, Int) -> Void) async throws -> LocalChatResult {
-        guard ProcessInfo.processInfo.physicalMemory >= 120 * 1024 * 1024 * 1024 else {
-            throw GGUFFile.Failure(message: "This resident IQ3_S model requires 128 GB unified memory")
+        guard ProcessInfo.processInfo.physicalMemory >= 32 * 1024 * 1024 * 1024 else {
+            throw GGUFFile.Failure(message: "Native IQ3_S paging requires at least 32 GB unified memory")
         }
         guard maxTokens > 0, (0...2).contains(temperature), topP > 0, topP <= 1 else {
             throw GGUFFile.Failure(message: "Invalid generation parameters")
         }
+        let expertBudget = GGUFMemoryPolicy.expertBudget()
+        let ticket = WiredMemoryTicket(size: min(Int(ProcessInfo.processInfo.physicalMemory * 3 / 4),
+            expertBudget + 16 * 1024 * 1024 * 1024), policy: WiredMaxPolicy())
         _ = await ticket.start()
         do {
             try Task.checkCancellation()
+            onProgress("加载分词器与配置", nil)
             if tokenizer == nil { tokenizer = try await LocalChatTokenizerLoader().load(from: directory) }
             let tokenizer = tokenizer!
             let descriptor = try Qwen4GGUFDescriptor.read(directory)
@@ -51,19 +55,30 @@ actor LocalQwen4GGUF {
                 throw GGUFFile.Failure(message: "Native Qwen4 context limit is 32768 tokens")
             }
             try Task.checkCancellation()
-            if model == nil {
-                MLX.Memory.cacheLimit = 1 << 30
-                model = try Qwen4GGUFModel(firstShard: directory.appendingPathComponent(descriptor.firstShard))
+            if model?.expertCache?.budget != expertBudget {
+                model = nil
+                MLX.Memory.clearCache()
+                MLX.Memory.cacheLimit = 256 * 1024 * 1024
+                onProgress("读取模型分片", nil)
+                model = try Qwen4GGUFModel(firstShard: directory.appendingPathComponent(descriptor.firstShard), expertBudget: expertBudget) { fraction in
+                    onProgress("加载模型权重", fraction)
+                }
             }
             let model = model!
             model.reset()
-            defer { model.reset(); mtp?.reset() }
+            defer {
+                Stream.gpu.synchronize()
+                model.clearPrefillCaches(); mtp?.draft.clearPrefillCaches()
+                model.reset(); mtp?.reset()
+                MLX.Memory.clearCache()
+            }
             var fallback: String? = !useMTP ? "MTP is disabled" : temperature != 0 ? "Qwen MTP requires temperature 0" : nil
             let useDraft = useMTP && temperature == 0 && descriptor.mtp != nil
             if useMTP && temperature == 0 && descriptor.mtp == nil { fallback = "No complete native MTP sidecar configured" }
-            if useDraft, mtp == nil { mtp = try Qwen4GGUFMTP(sidecar: directory.appendingPathComponent(descriptor.mtp!)) }
+            if useDraft, mtp == nil { onProgress("加载 MTP 草稿模型", nil); mtp = try Qwen4GGUFMTP(sidecar: directory.appendingPathComponent(descriptor.mtp!)) }
             mtp?.reset()
             if let image = prepared.image {
+                onProgress("加载视觉模型并处理图片", nil)
                 guard let projector = descriptor.projector else { throw LocalChatService.ChatError.imagesUnsupported }
                 if vision == nil { vision = try Qwen4GGUFVision.VisionModel.load(directory: directory, projector: directory.appendingPathComponent(projector)) }
                 guard let frames = image.frames else { throw LocalChatService.ChatError.invalidImage }
@@ -79,6 +94,7 @@ actor LocalQwen4GGUF {
             // Match the generation API's final-token boundary for bulk prompts.
             // The draft starts from the target's final hidden row, which already
             // represents the full prompt; no second full-prompt pass is needed.
+            onProgress("预填充提示词", 0)
             for range in Qwen4GGUFModel.prefillRanges(count: tokens.count, step: step, separateLast: bulk) {
                 try Task.checkCancellation()
                 let start = range.lowerBound, end = range.upperBound
@@ -93,8 +109,12 @@ actor LocalQwen4GGUF {
                         mtp!.prefill(shiftedTokens: shifted, hidden: model.lastHidden, fast: false)
                     }
                 }
+                onProgress("预填充提示词", Double(end) / Double(tokens.count))
             }
+            onProgress("生成回答", nil)
             eval(logits)
+            model.clearPrefillCaches(); mtp?.draft.clearPrefillCaches()
+            MLX.Memory.clearCache()
             let prefilled = Date()
             let sampler = GenerateParameters(temperature: temperature, topP: topP).sampler()
             var generated: [Int] = [], text = "", reason = "length"

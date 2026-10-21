@@ -25,6 +25,7 @@ struct SettingsView: View {
     var voices: [AVSpeechSynthesisVoice]
     
     @AppStorage("speechBackend") private var speechBackend = "system"
+    @AppStorage(GGUFMemoryPolicy.expertBudgetKey) private var expertCacheGiB = GGUFMemoryPolicy.defaultExpertGiB
     @AppStorage(LocalQwenMTP.enabledKey) private var mtpEnabled = true
     @AppStorage(LocalQwenMTP.temperatureKey) private var localTemperature = 0.6
     @AppStorage("appleIntelligenceEffectEnabled") private var intelligenceEffectEnabled = true
@@ -80,6 +81,10 @@ struct SettingsView: View {
                     Text("Models are loaded directly from HF_HOME on this device.")
                         .font(.caption).foregroundStyle(.secondary)
 
+                    Stepper("Flash-Next 专家缓存：\(min(expertCacheGiB, GGUFMemoryPolicy.maximumExpertGiB)) GiB",
+                            value: $expertCacheGiB, in: 0...GGUFMemoryPolicy.maximumExpertGiB)
+                    Text("下次请求生效。0 表示不保留专家缓存；较大的缓存通常更快。此预算不包含基础权重、上下文、视觉模型和系统文件缓存。PLE 查找表始终按需读取。")
+                        .font(.caption).foregroundStyle(.secondary)
                     Toggle("Use Local Qwen MTP", isOn: $mtpEnabled)
                     HStack {
                         Text("Local Chat Temperature")

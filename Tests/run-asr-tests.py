@@ -15,6 +15,8 @@ parser.add_argument('--cache', type=Path, default=root / '.build/ASRModel')
 parser.add_argument('--offline', action='store_true', help='Require a complete cached model; never download')
 parser.add_argument('--expected-words', nargs='*', default=[], help='Words that must appear in the transcript')
 parser.add_argument('--components-only', action='store_true', help='Test cache resolution and streaming buffers without a model')
+parser.add_argument('--chat-muse', action='store_true', help='Test native Muse Glimmer MXFP8 text, images and ATEM output')
+parser.add_argument('--muse-components', action='store_true', help='Only run Muse synthetic MXFP8 and ATEM checks without model weights')
 parser.add_argument('--chat-moe', action='store_true', help='Test cached Qwen3.5 MoE raw generation and App display')
 parser.add_argument('--chat-tokenizer', action='store_true', help='Test missing Gemma PT chat template and local template formats without loading weights')
 parser.add_argument('--image-flux2', action='store_true', help='Generate and edit with native FLUX.2 Klein 9B')
@@ -27,6 +29,7 @@ parser.add_argument('--flux2-checks', action='store_true', help='Test actual Kle
 parser.add_argument('--flux2-dev-parity', action='store_true', help='Compare native FLUX.2-dev Mistral, guidance and tokenizer against CPU references')
 parser.add_argument('--image', action='store_true', help='Generate and edit actual Qwen-Image-2.1 images using pure Swift/MLX')
 parser.add_argument('--image-parity', action='store_true', help='Compare native image components against CPU Diffusers fixtures')
+parser.add_argument('--image-residency', action='store_true', help='Test chat/image reservation cancellation and error recovery without image weights')
 parser.add_argument('--image-checks', action='store_true', help='Test cache completeness and native image cancellation/restart')
 parser.add_argument('--image-reference-sizes', action='store_true', help='Test actual vision preprocessing and VAE/DiT grid alignment without model weights')
 parser.add_argument('--image-negative-prompt', help='Optional true CFG negative prompt for image smoke')
@@ -54,6 +57,9 @@ parser.add_argument('--tts-streaming', action='store_true', help='Benchmark batc
 parser.add_argument('--streaming', action='store_true', help='Use the public 20s Qwen3ASR fixture to verify live partial revisions')
 parser.add_argument('--playback', action='store_true', help='Test app synthesis/playback/stop using isolated settings and muted output')
 args = parser.parse_args()
+if args.chat_muse or args.muse_components:
+    args.chat_muse = True
+    args.chat = True
 if args.remote_store_only:
     args.chat_store = True
 if args.remote_api_only:
@@ -74,7 +80,7 @@ if args.flux2_checks:
     args.image_checks = True
 if args.flux2_dev_parity:
     args.image_checks = True
-if args.image_reference_sizes:
+if args.image_reference_sizes or args.image_residency:
     args.image_checks = True
 if args.reference_prompt:
     args.chat = True
@@ -107,11 +113,20 @@ if args.image or args.image_parity or args.image_checks:
     objects += ['MLXLLM', 'MLXVLM', 'MLXLMCommon', 'MLXOptimizers']
     command += [str(root / 'Tests/LocalImageSmoke.swift'), str(root / 'Tests/ImageModelPerformanceTests.swift'), str(root / 'Tests/Flux1Tests.swift'), str(root / 'Tests/Flux2KleinTests.swift'), str(root / 'Tests/Flux2DevTests.swift'), str(root / 'Applications/Synomancer/Services/SpeechCacheAccess.swift')]
     command += [str(path) for path in sorted((root / 'Applications/Synomancer/Services/ImageGeneration').glob('*.swift'))]
+    # Image generation shares the chat service's model-residency gate.
+    command += [str(root / path) for path in [
+        'Applications/Synomancer/Services/LocalChatService.swift', 'Applications/Synomancer/Services/LocalMuseGlimmerOutput.swift',
+        'Applications/Synomancer/Services/LocalChatModelCache.swift',
+        'Applications/Synomancer/Services/LocalChatTokenizerLoader.swift',
+        'Applications/Synomancer/Services/LocalQwenMoEModel.swift',
+        'Applications/Synomancer/Services/LocalQwenMTP.swift', 'Applications/Synomancer/Services/LocalQwenDenseOptimization.swift',
+        'Applications/Synomancer/Services/AssistantMessageContent.swift']]
+    command += [str(path) for path in sorted((root / 'Applications/Synomancer/Services/GGUF').glob('*.swift'))]
 elif args.chat or args.chat_store or args.chat_api or args.chat_library or args.chat_mtp or args.chat_reasoning or args.chat_moe or args.chat_tokenizer:
     objects += ['MLXLLM', 'MLXVLM', 'MLXLMCommon', 'MLXOptimizers']
     command += [str(root / path) for path in [
-        'Tests/ReferenceImagePromptTests.swift' if args.reference_prompt else 'Tests/LocalChatTokenizerTests.swift' if args.chat_tokenizer else 'Tests/LocalChatMoESmoke.swift' if args.chat_moe else 'Tests/LocalChatReasoningSmoke.swift' if args.chat_reasoning else 'Tests/LocalChatMTPSmoke.swift' if args.chat_mtp else 'Tests/MLXModelLibraryTests.swift' if args.chat_library else ('Tests/ChatAPITests.swift' if args.chat_api else ('Tests/LocalChatStoreTests.swift' if args.chat_store else 'Tests/LocalChatSmoke.swift')), 'Applications/Synomancer/Services/LocalChatModelCache.swift',
-        'Applications/Synomancer/Services/AssistantMessageContent.swift', 'Applications/Synomancer/Services/LocalQwenMoEModel.swift', 'Applications/Synomancer/Services/LocalChatService.swift', 'Applications/Synomancer/Services/LocalQwenMTP.swift', 'Applications/Synomancer/Services/LocalChatTokenizerLoader.swift', 'Applications/Synomancer/Services/SpeechCacheAccess.swift']]
+        'Tests/LocalMuseGlimmerTests.swift' if args.chat_muse else 'Tests/ReferenceImagePromptTests.swift' if args.reference_prompt else 'Tests/LocalChatTokenizerTests.swift' if args.chat_tokenizer else 'Tests/LocalChatMoESmoke.swift' if args.chat_moe else 'Tests/LocalChatReasoningSmoke.swift' if args.chat_reasoning else 'Tests/LocalChatMTPSmoke.swift' if args.chat_mtp else 'Tests/MLXModelLibraryTests.swift' if args.chat_library else ('Tests/ChatAPITests.swift' if args.chat_api else ('Tests/LocalChatStoreTests.swift' if args.chat_store else 'Tests/LocalChatSmoke.swift')), 'Applications/Synomancer/Services/LocalChatModelCache.swift',
+        'Applications/Synomancer/Services/AssistantMessageContent.swift', 'Applications/Synomancer/Services/LocalQwenMoEModel.swift', 'Applications/Synomancer/Services/LocalChatService.swift', 'Applications/Synomancer/Services/LocalMuseGlimmerOutput.swift', 'Applications/Synomancer/Services/LocalQwenMTP.swift', 'Applications/Synomancer/Services/LocalQwenDenseOptimization.swift', 'Applications/Synomancer/Services/LocalChatTokenizerLoader.swift', 'Applications/Synomancer/Services/SpeechCacheAccess.swift']]
     command += [str(path) for path in sorted((root / 'Applications/Synomancer/Services/GGUF').glob('*.swift'))]
     if args.reference_prompt:
         command[command.index('-swift-version') + 1] = '6'
@@ -156,6 +171,8 @@ command += ['-lc++', '-framework', 'Vision', '-framework', 'CoreImage', '-framew
 subprocess.run(command, check=True, cwd=root)
 if args.flux2_dev_parity:
     subprocess.run([str(executable), '--flux2-dev-parity', str(root / '.build/Flux2DevParity'), str(root / '.build/Flux2DevMetadata')], check=True, cwd=products)
+elif args.image_residency:
+    subprocess.run([str(executable), '--residency-gate'], check=True, cwd=products)
 elif args.image_reference_sizes:
     subprocess.run([str(executable), '--reference-sizes'], check=True, cwd=products)
 elif args.flux1_parity:
@@ -192,7 +209,7 @@ elif args.image:
         image_command += ['--prompt', args.image_prompt]
     subprocess.run(image_command, check=True, cwd=products)
 elif args.chat or args.chat_store or args.chat_api or args.chat_library or args.chat_mtp or args.chat_reasoning or args.chat_moe or args.chat_tokenizer:
-    subprocess.run([str(executable), str(args.cache.resolve()), *([args.model] if args.model else []), *(["--remote-only"] if args.remote_api_only or args.remote_store_only else []), *([str(args.image_reference.resolve())] if args.reference_prompt and args.image_reference else [])], check=True, cwd=products)
+    subprocess.run([str(executable), str(args.cache.resolve()), *([args.model] if args.model else []), *(["--components-only"] if args.muse_components else []), *(["--remote-only"] if args.remote_api_only or args.remote_store_only else []), *([str(args.image_reference.resolve())] if args.reference_prompt and args.image_reference else [])], check=True, cwd=products)
 elif args.playback:
     subprocess.run([str(executable), str(args.cache.resolve())], check=True, cwd=products)
 elif args.tts or args.tts_streaming or args.tts_continuity:

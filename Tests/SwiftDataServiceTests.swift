@@ -5,6 +5,40 @@ import SwiftData
 struct SwiftDataServiceTests {
     @MainActor
     static func main() throws {
+        if CommandLine.arguments.count == 3 {
+            let schema = Schema(.all)
+            let disk = ModelConfiguration(schema: schema, url: URL(fileURLWithPath: CommandLine.arguments[2]), cloudKitDatabase: .none)
+            let container = try ModelContainer(for: schema, configurations: disk)
+            let context = ModelContext(container)
+            if CommandLine.arguments[1] == "--seed-providers" {
+                for (name, provider) in [("gemini:test", ModelProvider.gemini), ("openai:legacy", .openai),
+                                         ("mlx-community/test", .mlx), ("llama:latest", .ollama)] {
+                    let model = LanguageModelSD(name: name, modelProvider: provider)
+                    model.providerID = nil // Model rows from before the stable string field.
+                    let conversation = ConversationSD(name: name)
+                    conversation.model = model
+                    context.insert(model); context.insert(conversation)
+                }
+                context.insert(LanguageModelSD(name: "local-folder", modelProvider: .mlx))
+                try context.save()
+            } else {
+                let models = try context.fetch(FetchDescriptor<LanguageModelSD>())
+                precondition(models.count == 5)
+                for model in models {
+                    let expected: ModelProvider = model.name.hasPrefix("gemini:") ? .gemini
+                        : model.name.hasPrefix("openai:") ? .openai
+                        : model.name == "llama:latest" ? .ollama : .mlx
+                    precondition(model.provider == expected)
+                    _ = model.displayName
+                    model.provider = expected
+                }
+                let conversations = try context.fetch(FetchDescriptor<ConversationSD>())
+                precondition(conversations.count == 4)
+                try context.save()
+                print("PASS: providers and conversations survive a separate process without reading legacy enum")
+            }
+            return
+        }
         let schema = Schema(.all)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: configuration)

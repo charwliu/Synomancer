@@ -124,8 +124,17 @@ actor LocalImageService {
         }
         try Task.checkCancellation()
         busy = true
-        let requestCacheRevision = cacheRevision
         defer { busy = false }
+        let requestCacheRevision = cacheRevision
+        progress("等待聊天结束并释放聊天模型…", 0)
+        return try await LocalChatService.shared.withUnloadedChat {
+            try await self.generateImage(request, cache: cache, requestCacheRevision: requestCacheRevision, progress: progress)
+        }
+    }
+
+    private func generateImage(_ request: LocalImageRequest, cache: SpeechCacheAccess.Configuration,
+                               requestCacheRevision: Int, progress: @escaping @Sendable (String, Double) -> Void) async throws -> LocalImageResult {
+        try Task.checkCancellation()
         let root = try cache.resolve()
         let access = root.startAccessingSecurityScopedResource()
         defer { if access { root.stopAccessingSecurityScopedResource() } }

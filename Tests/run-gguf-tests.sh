@@ -15,6 +15,8 @@ xcrun swiftc -swift-version 5 -O -whole-module-optimization -parse-as-library \
   -Xcc "-fmodule-map-file=$maps/cLogSupport.modulemap" -Xcc "-fmodule-map-file=$maps/yyjson.modulemap" \
   Applications/Synomancer/Services/GGUF/*.swift \
   Applications/Synomancer/Services/LocalChatService.swift \
+  Applications/Synomancer/Services/LocalMuseGlimmerOutput.swift \
+  Applications/Synomancer/Services/LocalQwenDenseOptimization.swift \
   Applications/Synomancer/Services/LocalChatModelCache.swift \
   Applications/Synomancer/Services/LocalChatTokenizerLoader.swift \
   Applications/Synomancer/Services/LocalQwenMoEModel.swift \

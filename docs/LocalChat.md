@@ -4,6 +4,69 @@
 App 不再连接 Ollama，不再请求服务器模型列表、生成接口或健康检查。
 OllamaKit 已从 App 的包依赖和链接目标中移除。
 
+## Muse Glimmer 30B MXFP8
+
+`mlx-community/Muse-Glimmer-30B-mxfp8` 使用 App 内的 Swift + MLX Native 后端，
+支持多轮文本对话和图片理解。复用固定的 mlx-swift-lm 3.32.3 中的
+`MuseGlimmer` / `MuseGlimmerProcessor`，按原始 MXFP8（8-bit、group size 32）
+加载，无需转换权重、Python 运行时或外部推理服务。
+
+在设置 → Hugging Face → 下载 HF 模型中点击 **Muse Glimmer 30B MXFP8 · Native**，
+再检查模型并下载到 HF_HOME。仓库权重约 32.5 GB；完整的 150 个权重分片、
+分片索引、tokenizer、聊天模板和 `processor_config.json` 就绪后，刷新聊天模型，
+选择 `mlx-community/Muse-Glimmer-30B-mxfp8`。不完整的缓存不会出现在模型列表。
+模型来源：[MLX Community](https://huggingface.co/mlx-community/Muse-Glimmer-30B-mxfp8)。
+
+App 在加载权重之前验证 ATEM 控制 token。生成时按 token ID 解析消息边界，
+隐藏 assistant/recipient 头和工具帧；主聊天的 `to=self` 内容映射到现有可折叠思考区，
+API 默认只输出 `to=user` 的正式答案。多轮重放使用正式答案，避免把思考区当作
+普通 assistant 内容。token 用量保留真实生成数量，包含协议和思考 token。
+工具帧只隐藏，不执行工具调用；当前不加载 Muse assistant drafter，使用普通解码。
+图片沿用 448 像素预算，由原生 processor 对齐 patch/merge 网格；暂不复用提示前缀缓存。
+
+Release 构建后执行以下回归（顺序运行，测试可执行文件与其他聊天测试共用）：
+
+```sh
+python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
+  --source-packages .build/SourcePackages --configuration Release --muse-components
+
+python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
+  --source-packages .build/SourcePackages --configuration Release \
+  --cache /path/to/workspace/.cache/huggingface/hub --chat-muse
+```
+
+`--muse-components` 不需要下载权重：检查 ATEM 分帧、思考、Unicode、字面标记、
+无效 tokenizer、合成 MXFP8 checkpoint 的严格加载和 logits 一致性，以及图片
+patch/token 数量和缓存发现。它不代表真实 30B 模型推理通过。
+`--chat-muse` 还要求完整真实缓存，检查多轮口令、最终流式用量、红/蓝两种图片、
+生成回答的下一轮历史重放、停止字符串、取消和立即重启；缺失权重时失败，
+不会跳过真实推理。设置 `SYNOMANCER_MUSE_IMAGE=/absolute/path/to/red-mug.png`
+可增加红色杯子测试图的真实描述检查。测试为模板默认的高思考模式预留 1024
+个生成 token，包含隐藏的思考和协议 token。
+
+只验证真实 tokenizer/模板时，可在 `--muse-components` 前设置
+`SYNOMANCER_MUSE_TOKENIZER_DIR=/path/to/snapshot`，目录须包含完整的
+`tokenizer.json`、`tokenizer_config.json`、`chat_template.jinja` 和
+`processor_config.json`。该检查不加载 30B 权重。
+
+2026-10-21 本机真实验证通过：固定 revision
+`205eb41208cca89cd6eb9409ac0c2cc1fbbe1548` 的全部 150 个分片
+（32,503,464,693 字节）逐片 SHA-256 与下载清单匹配。以下结果来自 App 的
+`LocalChatService`，使用完整 30B MXFP8 权重和 Metal，未连接外部推理服务：
+
+- 多轮口令返回 `REDWOOD-472`；将真实生成的 assistant 回答重放后，追问返回 `472`。
+- ATEM 思考区和正式答案正确分离，最终流式文本及 token 用量一致；口令生成
+  239 token，本机两次实测约 13.6–15.3 token/s（包含思考和协议 token）。
+- 红、蓝两张图片分别回答 `red`、`blue`。红杯测试图描述为：
+  “A glossy red ceramic mug sits on a white surface against a plain light gray background.”
+- `WORLD` 停止字符串与完整回答的前缀一致；流式生成中取消后立即重启成功。
+
+完整日志位于 `.build/MuseNativeReal.log`，分片复核结果位于
+`.build/MuseSHA256Verification.json`。此前的 Release 构建、合成 MXFP8/ATEM/
+图片预处理、真实 tokenizer/模板检查，以及现有 Qwen3.8 27B 回归也已通过。
+
+## 本地缓存与聊天
+
 设置 → Hugging Face → **HF_HOME** 与 ASR/TTS 共用，默认：
 `/path/to/workspace/.cache/huggingface/hub`。
 使用 **Choose HF_HOME Folder…** 授权缓存根目录，然后点击
@@ -230,9 +293,14 @@ existing weights. An optional fourth argument copies a complete MTP sidecar into
 the export and adds its relative `mtp` path. It refuses to overwrite an existing export.
 
 The prepared local entry is `Synomancer/Qwen3.8-Flash-Next-IQ3_S` under the selected
-HF cache. Refresh models in Synomancer and select it. This resident implementation
-requires 128 GB unified memory. The first load takes roughly 1–2 minutes and
-subsequent requests reuse the weights. Switching to another local chat model
+HF cache. Refresh models in Synomancer and select it. PLE embeddings are read by
+row from the mapped GGUF, with a packed-row LRU capped at 16 MiB and 8,192 rows. Routed expert weights are
+also mapped, with a global packed-buffer LRU controlled by **Flash-Next 专家缓存**
+in Chat Models settings (default 16 GiB; capped at a quarter of physical RAM,
+up to 64 GiB). A budget of 0 disables retention, not expert computation. Changes
+apply on the next request and reload the target model. The loader requires at
+least 32 GiB; the tested machine has 128 GiB, so this is not a capacity guarantee
+for smaller machines or long/image contexts. Switching to another local chat model
 releases these weights. Generation supports history, image attachments,
 temperature/top-p, stop strings, streaming, cancellation and restart.
 
@@ -430,3 +498,266 @@ and token-count equality, cancellation/restart, stop sequences, sampling fallbac
 and one-token termination. Quantized/floating kernel and GGUF reader/cache checks
 also passed. The short vision request is a correctness check, not a steady-state
 vision throughput benchmark.
+
+
+### Bounded GGUF weight residency
+
+The target's PLE table and routed gate/up/down expert tensors are excluded from
+initial MLX allocation. Loading progress counts only resident tensor bytes.
+Routing selects the same top-10 experts as the resident path; selected records
+are compacted and IDs remapped without changing their order or quantization.
+Each paged MoE result is evaluated before staging the next layer so deferred
+GPU work cannot keep a full forward's evicted weights alive. The paged expert
+path bypasses compiled graphs that capture weight arrays. Metal dispatch objects
+are reused without retaining staged arrays. MTP's separate draft remains resident.
+
+The expert budget covers retained packed MLX buffers only. Base weights, MTP,
+vision, recurrent/KV state, temporary per-layer staging, and macOS clean file
+pages are additional memory. The OS can reclaim mapped pages; a file mapping's
+virtual size is not a physical allocation. This first implementation uses exact
+routing and LRU, without speculative disk prefetch or CPU expert execution.
+Lower budgets and cold file pages can substantially reduce throughput.
+
+Expanded FP16 prefill matrices are released at the decode boundary and on request
+completion/cancellation/error. The service also drains GPU work before cleanup
+and clears the allocator's unused buffers; persistent packed expert cache entries
+survive between requests.
+
+Validation switches for `Tests/run-gguf-tests.sh`:
+- `SYNOMANCER_GGUF_RESIDENT=1`: original fully resident weights, for comparison.
+- `SYNOMANCER_GGUF_EXPERT_GIB=N`: paging with N GiB expert retention (default 16).
+- `SYNOMANCER_GGUF_EXPERT_GIB=-1`: PLE paging with fully resident experts.
+
+The kernel suite checks exact PLE rows (including duplicate and boundary IDs),
+expert remapping for singleton, verifier and grouped-prefill paths, zero-budget
+and LRU eviction, and release/reconstruction of expanded prefill weights. Model
+smoke runs assert reference token equality and report MLX allocations, expert
+cache bytes/hits/misses, and the process physical footprint separately.
+
+2026-10-09 validation on M4 Max 128 GiB (single runs, original IQ3_S weights;
+short fixture 47 prompt tokens / 256 output tokens, draft loaded in both modes):
+
+| Mode | Post-decode physical footprint | Ordinary decode | MTP decode |
+| --- | --- | --- | --- |
+| Fully resident reference | 90.3–90.9 GB | 26.8 token/s | 48.5 token/s |
+| PLE paging + 16 GiB expert cache | 29.3–29.9 GB | 11.7 token/s | 22.1 token/s |
+
+GB in this table is decimal; the cache setting is binary GiB. File cache warmth,
+first-use kernel compilation, prompts and background load affect timings. Both
+modes matched all 256 reference tokens. The paged forced-rejection path also
+matched. A 4,037-token prompt (1,024-token chunks) matched all 128 reference
+outputs in ordinary/MTP/forced-rejection modes. It released 5,819,596,800 bytes
+of expanded prefill matrices; the combined short/long paged run peaked at
+38,200,270,544 bytes physical footprint. Expert retained bytes stayed below
+17,179,869,184 throughout. These measurements preceded the additional 8,192-row
+PLE metadata cap; that cap was covered by the kernel/service regressions.
+Logs: `/tmp/synomancer-paging-{buffer-model,resident-baseline,kernels,integration}.log`.
+
+The final service integration passed history recall, image descriptions with MTP
+on/off equality, cancellation, restart, stop sequences, sampling fallback and
+one-token limits. The Release build passed. The Mac was locked during the final
+UI check, so the new settings control was compiled but not visually verified.
+
+### Native decode fusion (strata-mlx PR #9)
+
+The native Swift/MLX GGUF backend adapts four optimizations from
+[strata-mlx PR #9](https://github.com/yibie/strata-mlx/pull/9): SIMD top-10 routing,
+GDN history/conv/SiLU fusion, GDN output RMSNorm/gate fusion, and routed/shared
+expert combination. The Metal source retains the upstream MIT notice. There is
+no Python inference dependency. Windows above eight tokens retain the original
+paths; ordinary decoding and the native MTP verifier use the same helpers.
+
+The port preserves this backend's ascending expert order (including tied
+scores), FP16 SiLU and reduction rounding, FP32 GDN normalization weights, and
+convolution history used for speculative rollback. It deliberately retains the
+existing Q/K normalization, text/multimodal RoPE, and hyper-connections. Upstream
+MLX-version-specific numerical formulas and M5 Ultra thresholds are not copied
+blindly. PLE warming from PR #10 is not included.
+
+Set `SYNOMANCER_GGUF_PR9=0` before launch to use the old path. Tests additionally
+support `SYNOMANCER_GGUF_PR9_ORDER=b0,b1,o0,o1,...`: `b`/`o` select baseline or
+optimized kernels and `0`/`1`/`2` select ordinary/MTP/forced rejection. Both graph
+variants are retained separately so switching does not force retracing each run.
+This switch is changed only serially by the benchmark, between completed runs.
+
+Reproduce the comparison with local weights (paths may contain spaces):
+
+```sh
+Tests/run-gguf-tests.sh --kernels
+Tests/run-gguf-decode-benchmark.sh /path/to/first-shard.gguf /path/to/mtp.gguf \
+  Tests/Fixtures/qwen4-iq3s-greedy.json resident
+Tests/run-gguf-decode-benchmark.sh /path/to/first-shard.gguf /path/to/mtp.gguf \
+  Tests/Fixtures/qwen4-iq3s-greedy.json paged
+```
+
+The benchmark shares one loaded model per residency mode, warms both kernel
+variants and generation modes, then takes four paired, order-reversed samples per
+configuration. Every run checks all reference tokens; the first token belongs
+to prefill and is excluded from decode throughput. Paged mode uses a 16 GiB
+expert cache. Compare results within a process, not against historical runs.
+
+Measured on 2026-10-15, Apple M4 Max / 128 GB / macOS 27.0.1, IQ3_S target
+and complete Q8_0 MTP sidecar. Short fixture: 47 input / 256 output tokens.
+Three measured runs per cell, after the four warmup runs; values are medians:
+
+| Residency / generation | Baseline token/s | Fused token/s | Change |
+| --- | ---: | ---: | ---: |
+| Full resident, ordinary | 41.34 | 39.65 | -4.1% |
+| Full resident, MTP | 81.80 | 67.65 | -17.3% |
+| PLE paging + 16 GiB experts, ordinary | 11.58 | 11.65 | +0.6% |
+| PLE paging + 16 GiB experts, MTP | 21.67 | 22.99 | +6.1% |
+
+The full-resident generation run drifted substantially: baseline ordinary ranged
+33.08–47.39 token/s and fused ordinary 25.40–40.68; baseline MTP 61.47–83.47
+and fused MTP 43.25–82.68. Both variants slowed later in the run. These measured
+regressions must not be omitted, but do not establish the kernel contribution in
+isolation. No stable full-resident end-to-end speedup is claimed.
+
+A separate paired-forward experiment restores the same state and feeds identical
+tokens to both variants, alternating which goes first. It includes host dispatch
+and GPU completion, and compares the full logits outside timing. Each row has
+24 measured pairs after four warmups; times below are medians, not end-to-end
+MTP throughput. Context is the initial prompt length; it grows during the test.
+
+| Residency / initial context / window | Baseline ms | Fused ms | Median paired difference (fused - baseline) |
+| --- | ---: | ---: | ---: |
+| Full resident / 47 / 1 | 21.02 | 19.95 | -1.04 ms |
+| Full resident / 47 / 4 | 34.02 | 32.99 | -1.09 ms |
+| Full resident / 4,037 / 1 | 23.91 | 23.03 | -0.90 ms |
+| Full resident / 4,037 / 4 | 38.85 | 37.61 | -1.19 ms |
+| Paged / 47 / 1 | 83.90 | 82.79 | -2.57 ms |
+| Paged / 47 / 4 | 147.26 | 151.48 | +0.01 ms |
+
+The full-resident paired results show about 3–5% lower forward latency. Paged
+four-token pairs show no clear gain: the first variant pays more cache/staging
+work, and reversing order reverses much of that difference. These results do
+not imply that kernel fusion removes expert-paging overhead. Full-resident
+short-run physical footprint stayed about 91.2 GB; paged mode stayed around
+30 GB. No residency policy, expert budget, or PLE warming behavior was changed.
+
+Validation: the synthetic kernel suite passed, including exact FP16 operations,
+FP32 normalization weights, tie order, history writes and long-window fallbacks.
+All 32 end-to-end A/B runs matched the 256-token reference, with unchanged MTP
+proposed/accepted counts (206/185). All 168 paired forwards (including warmups)
+had zero full-logit difference. Forced-rejection MTP matched the short 256-token
+and 4K-context 128-token references, with 14/16 exact prefix-cache/hidden checks.
+The Swift 6 Release application build passed.
+
+Enable the paired experiment with `SYNOMANCER_GGUF_PR9_PAIRED=1`. For the long
+fixture use `Tests/Fixtures/qwen4-iq3s-long-1024-128.json`; its prefill step is
+1,024. Generated evidence is under `.build/GGUFTests/`: `pr9-resident.log`,
+`pr9-paged.log`, `pr9-resident-paired.log`, `pr9-kernels.log`, `pr9-release.log`,
+`pr9-results.json` and `pr9-source-sha256.txt`. The interrupted
+`pr9-resident-preliminary.log` is excluded from every result above.
+
+
+### Per-kernel default selection (2026-10-15 follow-up)
+
+The four ports are independently selectable with `SYNOMANCER_GGUF_PR9_MASK`:
+`1` = top-10, `2` = convolution/SiLU/history, `4` = gated RMSNorm,
+`8` = MoE combination. Add bits to combine them. `0` is the original path and
+`15` is the previous all-enabled path. `SYNOMANCER_GGUF_PR9=0` overrides this
+setting and disables every port. The default is now `11` (top-10, conv, combine);
+gated RMSNorm remains available for experiments but is not enabled by default.
+
+Compiled MoE graphs are keyed by the top-10/combine bits; GDN graphs are keyed
+by the conv/norm bits and prefix-capture mode. Changing an unrelated bit does
+not create another copy of the same graph. The mask is immutable during normal
+app execution; only the serial test harness changes it between completed calls.
+
+The ablation holds model state and input fixed, rotates and reverses the order
+of configurations, and checks full-logit equality. It tests single features,
+all-enabled, and leave-one-out configurations at windows of 1, 2 and 4 tokens.
+The first four samples warm each graph; the initial sweep measures 60 samples
+per cell. Timing includes CPU graph dispatch and GPU completion. Thermal state
+is recorded with each observation. Only the within-sample paired differences
+are used to attribute a change to a feature.
+
+To run that sweep using the benchmark helper, add these environment settings:
+
+```sh
+SYNOMANCER_GGUF_PR9_ABLATION=1 SYNOMANCER_GGUF_PR9_ABLATION_ONLY=1 \
+SYNOMANCER_GGUF_PR9_PAIRED=0 \
+Tests/run-gguf-decode-benchmark.sh /path/to/first-shard.gguf /path/to/mtp.gguf \
+  Tests/Fixtures/qwen4-iq3s-greedy.json resident
+```
+
+`SYNOMANCER_GGUF_PR9_ABLATION_MASKS` and `SYNOMANCER_GGUF_PR9_ABLATION_SAMPLES`
+customize the sweep. The default mask list is `0,1,2,4,8,15,14,13,11,7`.
+`SYNOMANCER_GGUF_PR9_MASK_ORDER` specifies a mask for each end-to-end run.
+`SYNOMANCER_GGUF_PR9_LONG_ORDER` and `SYNOMANCER_GGUF_PR9_LONG_MASK_ORDER`
+can override the generation/mask sequence for a long extra fixture, so a long
+forced-rejection regression need not repeat the entire throughput matrix.
+
+Initial full-resident sweep: median paired latency change in ms (negative is
+faster), 60 measured states per window. All configurations use identical inputs
+and restored state within a sample:
+
+| Enabled alone | 1 token | 2 tokens | 4 tokens | Default |
+| --- | ---: | ---: | ---: | --- |
+| Top-10 (`1`) | -0.320 | -0.330 | -0.352 | On |
+| Conv/SiLU/history (`2`) | -0.195 | -0.174 | -0.211 | On |
+| Gated RMSNorm (`4`) | -0.043 | -0.117 | +0.160 | Off |
+| MoE combination (`8`) | -0.746 | -0.320 | -0.636 | On |
+| Selected combination (`11`) | -1.022 | -1.070 | -0.976 | On |
+| Previous all-enabled (`15`) | -1.048 | -1.121 | -1.015 | Opt-in |
+
+The leave-one-out comparison is particularly weak for gated RMSNorm: adding it
+back to mask 11 wins only 53%, 52%, and 52% of samples at windows 1, 2, and 4.
+Its median marginal savings are just 0.022, 0.015, and 0.059 ms. The actual Q/K
+normalization output is FP16, so this is not explained by the gate-norm path
+being entirely skipped due to a dtype mismatch. It has no reliable incremental
+benefit on this machine and is disabled by default.
+
+An independent continuous-run repeat exposed substantial common-mode drift.
+Baseline MTP fell from 77.58 to 56.10 token/s across the measured rounds; mask 11
+fell from 78.44 to 59.70. Later, the two-token all-disabled forward median reached
+83.09 ms, compared with 25.65 ms in the initial sweep. Both paths were affected.
+Thermal state changed from nominal to fair; AC power and normal power mode were
+confirmed. No power/thermal warning was reported by `pmset`, and hardware
+frequency counters were unavailable without privileged authentication. These
+observations establish run-state drift, but do not prove thermal throttling as
+its sole cause. The four kernels do not reproduce a per-pass slowdown large
+enough to explain the previous 17% end-to-end result.
+
+For transparency, the continuous-repeat throughput medians (four measured runs)
+were 40.00 -> 41.93 token/s ordinary and 73.09 -> 71.66 MTP. Adjacent paired speed
+changes ranged from -5.6% to +8.6% ordinary and -4.0% to +6.4% MTP. This is not a
+stable MTP speedup claim. The noisy repeat is retained, not pooled into the
+initial sweep or silently discarded.
+
+`SYNOMANCER_GGUF_BENCH_PAUSE_MS=5000` adds five seconds *between* generation runs
+(up to 60,000 ms), outside timing, for a separate paced-request comparison.
+It never inserts a delay in application inference. The benchmark helper also
+preserves Hugging Face snapshot symlink names when making paths absolute; a
+canonical blob hash loses the shard naming needed to find the second file.
+
+The paced diagnostic did **not** produce a valid final speed estimate and was
+stopped. Its first all-disabled run was only 3.87 token/s while thermal state was
+nominal (mask 11 was 3.18); thus thermal state alone does not explain the slow
+state. A short process sample showed waits in `mlx::core::scheduler::wait_for_one`
+from `eval_impl` and in Metal/IOGPU command submission. This is evidence of
+scheduler/driver waiting, not proof of a particular GPU-frequency, page-fault,
+or background-task cause. A process-local `taskpolicy -B` diagnostic attempt did
+not promptly restore normal speed; that also makes the interrupted run unsuitable
+for inclusion in the benchmark. No user application or system power setting was
+changed. The test process was terminated and its model allocation released.
+
+The default selection is therefore based on the balanced per-forward ablation,
+including the leave-one-out check, rather than the disturbed paced run. It is a
+conservative selection of demonstrated kernel savings, not a claim that the
+remaining system-level throughput variability has been fixed. Hardware-frequency
+and per-process GPU contention attribution remain unresolved.
+
+Validation for this follow-up: both ablation sweeps completed (1,920 + 1,260
+configuration evaluations), all with zero full-logit difference. The independent
+repeat matched all 256 reference tokens in each of its 20 ordinary/MTP runs;
+proposal/acceptance counts remained 206/185. The selected defaults also matched
+the 4K-prompt 128-token forced-rejection reference and 16 exact prefix-cache/hidden
+comparisons. The full kernel suite and Swift 6 Release build passed.
+
+Evidence under `.build/GGUFTests/`: `pr9-ablation-resident.log`/`.json`,
+`pr9-selected-resident.log`/`.json`, `pr9-selected-kernels.log`,
+`pr9-selected-release.log`, and `pr9-selected-source-sha256.txt`.
+`pr9-selected-paced.log` and `pr9-slow-sample.txt` are diagnostic evidence only;
+the interrupted paced run is excluded from performance conclusions.

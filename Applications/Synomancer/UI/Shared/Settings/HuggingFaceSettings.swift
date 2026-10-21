@@ -18,6 +18,11 @@ struct HuggingFaceSettings: View {
             Text("聊天、图像、ASR 和 TTS 共用此缓存。选择一次文件夹以授予访问权限；支持 huggingface 或 hub 根目录。")
                 .font(.caption).foregroundStyle(.secondary)
             DisclosureGroup("下载 HF 模型") {
+                Button("Muse Glimmer 30B MXFP8 · Native") {
+                    downloads.repository = "mlx-community/Muse-Glimmer-30B-mxfp8"
+                    downloads.revision = "main"
+                    downloads.allFiles = false
+                }.disabled(downloads.busy)
                 TextField("仓库名（namespace/model）", text: $downloads.repository).autocorrectionDisabled().disabled(downloads.busy)
                 TextField("Revision", text: $downloads.revision).autocorrectionDisabled().disabled(downloads.busy)
                 SecureField("HF Token（可选）", text: $downloads.token).disabled(downloads.busy)

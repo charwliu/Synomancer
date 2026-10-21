@@ -125,6 +125,47 @@ python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
 
 流式停止会暂存可能属于 stop string 的后缀，避免分块输出泄漏停止标记的部分前缀。
 
+### Qwen3.8 27B dense 投影合并实验（2026-10-20）
+
+`LocalQwenDenseOptimization.swift` 可在首次前向计算前，将 dense MLP 的
+gate/up 两个量化投影按输出维度拼接，减少一次投影调用。保留原有 packed
+权重、scales、biases，不反量化、不重新量化；仅合并 shape、bits、group size
+一致的 affine 无偏置投影。混合配置不兼容时保留原模块。该实现只使用 Swift
+和 MLX，不修改 SPM 上游源码或 HF 权重。
+
+**目前默认关闭**，实验开关为 `SYNOMANCER_QWEN_DENSE_FUSION=1`。
+实测收益不足以作为默认优化。主模型原有编译解码和 MTP 保持原设置。
+
+实际模型为 `mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit`，使用编程提示、
+生成 128 tokens、温度 0。单模型初始基线为普通 22.64 tokens/s、MTP 34.06
+tokens/s，MTP 草稿接受 56/70。随后分进程连续测试出现明显速度漂移，
+因此判断融合收益使用同进程两个独立服务、均预热、6 对 AB/BA 交替测试：
+
+| 路径 | 原版中位数 tokens/s | 合并版中位数 tokens/s | 逐对提升的中位数 | 逐对范围 |
+| --- | ---: | ---: | ---: | ---: |
+| 普通解码 | 22.11 | 22.33 | +1.20% | −0.84% 至 +7.27% |
+| MTP | 29.18 | 29.73 | +0.67% | +0.16% 至 +4.84% |
+
+逐对提升与两列中位数之比是不同统计量。配对测试同时驻留两份模型，
+绝对速度不与单模型初始基线直接比较；本轮也不能推断长提示或其他模型收益。
+12 对真实生成均检查了融合前后完整输出一致。另有合成 4/8-bit 投影、
+不兼容量化回退、整模型 logits 和缓存连续更新回归，以及真实 MTP 的
+停止字符串、取消重启、非零温度回退检查。
+
+复现配对测试：
+
+```sh
+SYNOMANCER_QWEN_BENCH_PAIRED=1 python3 Tests/run-asr-tests.py \
+  --derived-data .build/DerivedData --source-packages .build/SourcePackages \
+  --configuration Release --cache /path/to/workspace/.cache/huggingface/hub \
+  --chat-mtp --model mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit
+```
+
+配对模式使用显式服务配置，不依赖全局融合开关；需要容纳两份模型的内存。
+`SYNOMANCER_QWEN_BENCH_REPEAT=1` 则在普通 `--chat-mtp` 回归中增加四轮
+普通/MTP 交替重复，用于观察单模型运行的波动。
+本轮原始日志保存在 `.build/Qwen27Performance/`，不纳入版本控制。
+
 
 ## Metal 验证下的 Gemma-4 崩溃修复
 

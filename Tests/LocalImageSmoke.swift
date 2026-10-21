@@ -10,6 +10,10 @@ import Synchronization
 struct LocalImageSmoke {
     static func main() async throws {
         setbuf(stdout, nil)
+        if CommandLine.arguments.contains("--residency-gate") {
+            try await residencyGate()
+            return
+        }
         if CommandLine.arguments.contains("--flux2-dev-parity") {
             try await Flux2DevTests.run(URL(fileURLWithPath: CommandLine.arguments[2]),
                 metadata: URL(fileURLWithPath: CommandLine.arguments[3]))
@@ -359,6 +363,37 @@ struct LocalImageSmoke {
             precondition(layout.imageIndices.size == 2 * width * height / 256)
             print("PASS: \(width)x\(height) vision grid matches VAE and DiT layout")
         }
+    }
+
+    static func residencyGate() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = SpeechCacheAccess.Configuration(path: root.path, bookmark: nil)
+        let service = LocalImageService()
+        let request = LocalImageRequest(modelID: "missing-image-model", prompt: "test", width: 512, height: 512, steps: 2)
+        try await LocalChatService.shared.withUnloadedChat {
+            let (waiting, signal) = AsyncStream<Void>.makeStream()
+            let task = Task {
+                try await service.generate(request, cache: cache) { stage, _ in
+                    if stage.hasPrefix("等待聊天") { signal.yield(()) }
+                }
+            }
+            for await _ in waiting { break }
+            task.cancel()
+            do { _ = try await task.value; preconditionFailure("Waiting image did not cancel") }
+            catch is CancellationError { }
+            signal.finish()
+        }
+        // Both the image busy flag and chat reservation must recover. The
+        // missing model is intentional; no image weights are needed here.
+        for _ in 0..<2 {
+            do {
+                _ = try await service.generate(request, cache: cache) { _, _ in }
+                preconditionFailure("Missing image model accepted")
+            } catch LocalImageError.unavailable { }
+        }
+        print("PASS: image entry waits for chat gate, cancellation unblocks, model-load errors release both gates")
     }
 
     static func checks(_ service: LocalImageService, cache: SpeechCacheAccess.Configuration, model: LocalImageModel) async throws {

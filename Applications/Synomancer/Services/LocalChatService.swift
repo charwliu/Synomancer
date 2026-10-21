@@ -27,6 +27,11 @@ struct LocalChatResult: Sendable {
 
 actor LocalChatService {
     static let shared = LocalChatService()
+    private let qwenDenseFusion: Bool
+
+    init(qwenDenseFusion: Bool = ProcessInfo.processInfo.environment["SYNOMANCER_QWEN_DENSE_FUSION"] == "1") {
+        self.qwenDenseFusion = qwenDenseFusion
+    }
     // All model access is actor-owned and protected by the generating gate across
     // suspension points. The upstream worker is joined before another request runs.
     private var gguf: LocalQwen4GGUF?
@@ -36,6 +41,7 @@ actor LocalChatService {
     private var loadedDirectory: URL?
     private var loadedCache: SpeechCacheAccess.Configuration?
     private var generating = false
+    private var waitingImageTasks = 0
     private struct PromptCheckpoint {
         let tokens: [Int]
         let cache: [KVCache]
@@ -47,6 +53,36 @@ actor LocalChatService {
 
     func clearPromptCache() {
         promptCheckpoint = nil
+    }
+
+    /// Reserve the same gate used by chat until image work (including GPU
+    /// cleanup) finishes. Waiting image work takes precedence over new chats.
+    func withUnloadedChat<T: Sendable>(
+        _ operation: @Sendable () async throws -> T
+    ) async throws -> T {
+        waitingImageTasks += 1
+        defer { waitingImageTasks -= 1 }
+        while generating {
+            try Task.checkCancellation()
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        try Task.checkCancellation()
+        generating = true
+        defer {
+            Stream.gpu.synchronize()
+            MLX.Memory.clearCache()
+            generating = false
+        }
+        Stream.gpu.synchronize()
+        promptCheckpoint = nil
+        context = nil
+        drafter = nil
+        gguf = nil
+        loadedModel = nil
+        loadedDirectory = nil
+        loadedCache = nil
+        MLX.Memory.clearCache()
+        return try await operation()
     }
 
     func models(cache: SpeechCacheAccess.Configuration) async throws -> [LocalChatModel] {
@@ -71,8 +107,10 @@ actor LocalChatService {
 
     func generate(modelID: String, messages: [LocalChatMessage], cache: SpeechCacheAccess.Configuration,
                   temperature: Float = 0.6, maxTokens: Int = 2048, topP: Float = 1, stop: [String] = [], useMTP: Bool = true, frameReasoning: Bool = false, reusePromptCache: Bool = true, prefillStepSize: Int? = nil,
+                  onProgress: @escaping @Sendable (String, Double?) -> Void = { _, _ in },
                   onUpdate: @escaping @Sendable (String, Int) -> Void) async throws -> LocalChatResult {
-        while generating {
+        onProgress("等待模型就绪", nil)
+        while generating || waitingImageTasks > 0 {
             try Task.checkCancellation()
             try await Task.sleep(for: .milliseconds(20))
         }
@@ -105,7 +143,7 @@ actor LocalChatService {
             loadedCache = nil
             if gguf?.directory != model.directory { gguf = nil; MLX.Memory.clearCache(); gguf = LocalQwen4GGUF(directory: model.directory) }
             return try await gguf!.generate(messages: messages, temperature: temperature, maxTokens: maxTokens,
-                topP: topP, stop: stop, useMTP: useMTP, prefillStepSize: prefillStepSize, onUpdate: onUpdate)
+                topP: topP, stop: stop, useMTP: useMTP, prefillStepSize: prefillStepSize, onProgress: onProgress, onUpdate: onUpdate)
         }
         if gguf != nil { gguf = nil; MLX.Memory.clearCache() }
         if context == nil || loadedDirectory != model.directory || loadedCache != cache {
@@ -113,22 +151,28 @@ actor LocalChatService {
             if let config = try JSONSerialization.jsonObject(with: configData) as? [String: Any] {
                 try LocalQwenMTP.validateGating(config)
             }
+            onProgress("加载分词器", nil)
             let tokenizerLoader = try await LocalChatTokenizerLoader.validated(for: model)
             try Task.checkCancellation()
             promptCheckpoint = nil
             context = nil
             drafter = nil
+            onProgress("加载模型权重", nil)
             if model.isVisionModel {
                 let factory = model.modelType == "qwen3_5_moe" ? LocalQwenMoEModel.factory : VLMModelFactory.shared
                 context = try await factory.load(from: model.directory, using: tokenizerLoader)
             } else {
                 context = try await LLMModelFactory.shared.load(from: model.directory, using: tokenizerLoader)
             }
+            if qwenDenseFusion {
+                if let context { try LocalQwenDenseOptimization.install(on: context.model) }
+            }
             loadedModel = model
             loadedDirectory = model.directory
             loadedCache = cache
         }
         try Task.checkCancellation()
+        onProgress("准备提示词", nil)
         guard let context else { throw ChatError.modelUnavailable(modelID) }
         if useMTP && temperature == 0 && !model.isVisionModel && drafter == nil,
            let checkpoint = try LocalQwenMTP.checkpoint(in: model.directory) {
@@ -141,7 +185,9 @@ actor LocalChatService {
             var images: [UserInput.Image] = []
             let history: [MLXLMCommon.Message] = try messages.map { message in
                 if model.isVisionModel {
-                    var content: [[String: String]] = [["type": "text", "text": message.content]]
+                    let text = model.modelType == "muse_glimmer" && message.role == "assistant"
+                        ? AssistantMessageContent(message.content).answer : message.content
+                    var content: [[String: String]] = [["type": "text", "text": text]]
                     if let data = message.image {
                         guard let image = CIImage(data: data, options: [.applyOrientationProperty: true]) else { throw ChatError.invalidImage }
                         images.append(.ciImage(image))
@@ -183,7 +229,9 @@ actor LocalChatService {
                 return try await generateMTP(input: input, context: context, drafter: drafter,
                     parameters: parameters, stop: stop, primedReasoning: primedReasoning, onUpdate: onUpdate)
             }
-            let fallback = !useMTP ? "MTP is disabled" : temperature != 0 ? "Qwen MTP requires temperature 0" : "No supported local MTP sidecar"
+            let fallback = !useMTP ? "MTP is disabled" : model.modelType == "muse_glimmer"
+                ? "Muse Glimmer uses ordinary native decoding"
+                : temperature != 0 ? "Qwen MTP requires temperature 0" : "No supported local MTP sidecar"
             // Restrict reuse to verified text paths. Media carries additional
             // positional state and must continue through the full prepared input.
             let canCache = reusePromptCache && images.isEmpty && input.text.tokens.ndim == 1
@@ -243,6 +291,8 @@ actor LocalChatService {
             }
             let iterator = try TokenIterator(input: generationInput, model: context.model,
                 cache: generationCache, state: generationState, parameters: parameters)
+            var museOutput = try model.modelType == "muse_glimmer"
+                ? LocalMuseGlimmerOutput(tokenizer: context.tokenizer) : nil
             let (events, worker) = MLXLMCommon.generateTokenTask(promptTokenCount: promptTokens,
                 modelConfiguration: context.configuration, tokenizer: context.tokenizer, iterator: iterator)
             return try await withTaskCancellationHandler {
@@ -259,10 +309,12 @@ actor LocalChatService {
                         switch event {
                         case .token(let token):
                             tokens.append(token)
-                            if stop.isEmpty { detokenizer.append(token: token) }
+                            museOutput?.append(token)
+                            if stop.isEmpty && museOutput == nil { detokenizer.append(token: token) }
                             var decoded: String?
                             if !stop.isEmpty {
-                                decoded = context.tokenizer.decode(tokenIds: tokens)
+                                decoded = museOutput?.text(includeReasoning: frameReasoning)
+                                    ?? context.tokenizer.decode(tokenIds: tokens)
                                 if stop.contains(where: { decoded!.contains($0) }) {
                                     stoppedBySequence = true
                                     worker.cancel()
@@ -276,8 +328,12 @@ actor LocalChatService {
                                 // newline-delimited segment, including UTF-8 boundaries.
                                 // Stop strings retain full decoding for exact matching.
                                 if stop.isEmpty {
-                                    if let chunk = detokenizer.next() { streamedText += chunk }
-                                    decoded = streamedText
+                                    if let museOutput {
+                                        decoded = museOutput.text(includeReasoning: frameReasoning)
+                                    } else {
+                                        if let chunk = detokenizer.next() { streamedText += chunk }
+                                        decoded = streamedText
+                                    }
                                 }
                                 onUpdate(AssistantMessageContent.framed(Self.visibleText(decoded!, stop: stop), primed: primedReasoning), tokens.count)
                                 lastUpdate = now
@@ -291,7 +347,8 @@ actor LocalChatService {
                     // serial access or allowing a cancelled request's replacement to start.
                     await worker.value
                     try Task.checkCancellation()
-                    var text = context.tokenizer.decode(tokenIds: tokens)
+                    var text = museOutput?.text(includeReasoning: frameReasoning)
+                        ?? context.tokenizer.decode(tokenIds: tokens)
                     if let end = stop.compactMap({ text.range(of: $0)?.lowerBound }).min() { text = String(text[..<end]) }
                     onUpdate(AssistantMessageContent.framed(text, primed: primedReasoning), tokens.count)
                     return LocalChatResult(text: AssistantMessageContent.framed(text, primed: primedReasoning), tokensPerSecond: info?.tokensPerSecond ?? 0,

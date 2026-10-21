@@ -6,6 +6,50 @@ import MLXNN
 /// dispatch paths, including duplicate expert IDs and partial 32-route tiles.
 enum GGUFKernelTests {
     static func run() throws {
+        let probe = MLXArray.ones([1, 1, 16, 128], dtype: .float16)
+        print("GDN normalized Q/K dtype", Qwen4GGUFOps.normalizeQK([probe, probe])[0].dtype)
+        let originalMask = Qwen4GGUFDecodeKernels.mask
+        Qwen4GGUFDecodeKernels.mask = 15
+        defer { Qwen4GGUFDecodeKernels.mask = originalMask }
+        for length in [1, 2, 4, 8, 16] {
+            for ties in [false, true] {
+                let values = sin(MLXArray(0..<(length * 512)).asType(.float32) / 17)
+                let x = (ties ? (values * 3).asType(.int32).asType(.float16) : values.asType(.float16)).reshaped([1, length, 512])
+                let expected = argPartition(x, kth: -10, axis: -1)[.ellipsis, 502...]
+                let got = Qwen4GGUFDecodeKernels.top10(x)
+                precondition(all(got .== expected).item(Bool.self), "PR9 top-k order/ties changed")
+            }
+            let x = sin(MLXArray(0..<(length * 48 * 128)).asType(.float32) / 19).asType(.float16).reshaped([1, length, 48, 128])
+            let z = (cos(x.asType(.float32) * 13) * 12).asType(.float16)
+            let w = cos(MLXArray(0..<128).asType(.float32) / 31).asType(.float16)
+            let expected = Qwen4GGUFOps.floatSigmoidGate(MLXFast.rmsNorm(x, weight: w, eps: 1e-6), z)
+            let got = Qwen4GGUFDecodeKernels.gatedNorm(x, weight: w, gate: z)
+            print("GATED", length, max(abs(got.asType(.float32)-expected.asType(.float32))).item(Float.self))
+            precondition(all(got .== expected).item(Bool.self), "PR9 gated norm changed rounding")
+            let shared = x.reshaped([1,length,6144])[.ellipsis, ..<2560]
+            let expert = sin(MLXArray(0..<(length*10*2560)).asType(.float32)/23).asType(.float16).reshaped([1,length,10,2560])
+            let scores = softmax(cos(MLXArray(0..<(length*10)).asType(.float32)).asType(.float16).reshaped([1,length,10]), axis: -1)
+            let gate = shared[.ellipsis, ..<1]
+            let reference = sum(expert*scores.expandedDimensions(axis: -1), axis: -2)+sigmoid(gate)*shared
+            let combined = Qwen4GGUFDecodeKernels.combine(expert, scores: scores, gate: gate, shared: shared)
+            print("COMBINE", length, max(abs(combined.asType(.float32)-reference.asType(.float32))).item(Float.self))
+            precondition(all(combined .== reference).item(Bool.self), "PR9 MoE combination changed rounding")
+            let floatWeight = w.asType(.float32) + 0.0001
+            let floatExpected = Qwen4GGUFOps.floatSigmoidGate(MLXFast.rmsNorm(x, weight: floatWeight, eps: 1e-6), z)
+            let floatGot = Qwen4GGUFDecodeKernels.gatedNorm(x, weight: floatWeight, gate: z)
+            print("GATED F32", length, max(abs(floatGot-floatExpected)).item(Float.self))
+            precondition(all(floatGot .== floatExpected).item(Bool.self), "PR9 F32 weight normalization changed")
+            let channels = 10240
+            let input = sin(MLXArray(0..<((length+3)*channels)).asType(.float32) / 31).asType(.float16).reshaped([1,length+3,channels])
+            let weight = cos(MLXArray(0..<(channels*4)).asType(.float32) / 19).asType(.float16).reshaped([channels,4,1])
+            if let (out, joined) = Qwen4GGUFDecodeKernels.convSilu(input[0...,3...,0...], state: input[0...,..<3,0...], weight: weight) {
+                let expected = silu(conv1d(input, weight, groups: channels))
+                print("CONV", length, max(abs(out.asType(.float32)-expected.asType(.float32))).item(Float.self))
+                precondition(all(out .== expected).item(Bool.self), "PR9 conv/silu rounding changed")
+                precondition(all(joined .== input).item(Bool.self), "PR9 convolution history changed")
+            }
+        }
+        print("PASS: PR9 top-k ties/order, gated norm, conv/silu/history and fallback")
         precondition(Qwen4GGUFModel.prefillRanges(count: 1, step: 16, separateLast: true) == [0..<1])
         precondition(Qwen4GGUFModel.prefillRanges(count: 32, step: 16, separateLast: true) == [0..<16, 16..<31, 31..<32])
         precondition(Qwen4GGUFModel.prefillRanges(count: 33, step: 16, separateLast: true) == [0..<16, 16..<32, 32..<33])
@@ -93,7 +137,7 @@ enum GGUFKernelTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         func u32(_ n: UInt32) -> Data { var v = n.littleEndian; return withUnsafeBytes(of: &v) { Data($0) } }
         func u64(_ n: UInt64) -> Data { var v = n.littleEndian; return withUnsafeBytes(of: &v) { Data($0) } }
-        func fixture(type: UInt32, experts: Int, width: Int = 256, rows: Int = 64, name: String = "weight") throws -> GGUFTensor {
+        func fixture(type: UInt32, experts: Int, width: Int = 256, rows: Int = 64, name: String = "weight", cache: GGUFWeightCache? = nil) throws -> GGUFTensor {
             let layout = try GGUFFile.layout(type)
             let stride = width / layout.block * layout.bytes
             var data = u32(0x46554747) + u32(3) + u64(1) + u64(0)
@@ -117,11 +161,65 @@ enum GGUFKernelTests {
                     return UInt8(0x11 + (index * 7 + salt) % 8)
                 })
             }
-            let path = directory.appendingPathComponent("\(type)-\(experts)-\(width)-\(rows)-\(name).gguf")
+            let path = directory.appendingPathComponent("\(UUID().uuidString).gguf")
             try data.write(to: path)
             let file = try GGUFFile(url: path)
-            return try GGUFTensor(file: file, tensor: file.tensors[name]!)
+            return try GGUFTensor(file: file, tensor: file.tensors[name]!, cache: cache)
         }
+        let lru = GGUFWeightCache(budget: 8)
+        func read(_ index: Int, _ count: Int = 4) -> MLXArray {
+            lru.read(key: .init(tensor: "test", index: index), byteCount: count) { MLXArray(Array(repeating: UInt8(index), count: count)) }
+        }
+        _ = read(1); _ = read(2); _ = read(1); _ = read(3)
+        precondition(lru.bytes == 8 && lru.hits == 1 && lru.misses == 3)
+        _ = read(1); _ = read(2)
+        precondition(lru.hits == 2 && lru.misses == 4, "LRU must evict the least recently used record")
+        _ = read(9, 16)
+        precondition(lru.bytes == 8, "Oversize record must bypass the cache")
+        lru.removeAll(); precondition(lru.bytes == 0)
+        let entryLimited = GGUFWeightCache(budget: 1024, maximumEntries: 2)
+        for index in 0..<3 {
+            _ = entryLimited.read(key: .init(tensor: "row", index: index), byteCount: 1) { MLXArray([UInt8(index)]) }
+        }
+        precondition(entryLimited.bytes == 2, "Tiny PLE buffers must also obey the entry-count cap")
+        for type: UInt32 in [0, 1, 30, 8, 21] {
+            let resident = try fixture(type: type, experts: 1)
+            let cache = GGUFWeightCache(budget: 2048)
+            let paged = try fixture(type: type, experts: 1, cache: cache)
+            for values: [UInt32] in [[63, 0, 63, 17], [17, 1, 2, 63]] {
+                let ids = MLXArray(values).reshaped([2, 2])
+                precondition(all(resident.embedding(ids) .== paged.embedding(ids)).item(Bool.self),
+                    "Paged embedding differs for type \(type)")
+                precondition(cache.bytes <= cache.budget)
+            }
+        }
+        for type: UInt32 in [8, 21] {
+            let resident = try fixture(type: type, experts: 4)
+            let cache = GGUFWeightCache(budget: 0)
+            let paged = try fixture(type: type, experts: 4, cache: cache)
+            let selected = paged.selectedRecords([1, 3], expert: true)
+            for length in [1, 4, 129] {
+                let x = sin(MLXArray(0..<(length * 256)).asType(.float32) / 19)
+                    .asType(.float16).reshaped([1, length, 256])
+                let original = MLXArray(Array(repeating: [UInt32(3), 1, 3], count: length).flatMap { $0 }).reshaped([1, length, 3])
+                let compact = MLXArray(Array(repeating: [UInt32(1), 0, 1], count: length).flatMap { $0 }).reshaped(original.shape)
+                let a = resident.gathered(x, ids: original, repeats: 3,
+                    routing: length > 8 ? GGUFExpertRoutes(ids: original, experts: 4) : nil)
+                let b = selected.gathered(x, ids: compact, repeats: 3,
+                    routing: length > 8 ? GGUFExpertRoutes(ids: compact, experts: 2) : nil)
+                precondition(all(a .== b).item(Bool.self), "Paged expert routing changed output")
+            }
+            precondition(cache.bytes == 0 && cache.misses == 2)
+        }
+        let expanded = try fixture(type: 8, experts: 1)
+        let expandedInput = MLXArray.ones([1, 16, 256], dtype: .float16)
+        let expandedOutput = expanded.linear(expandedInput, prefill: true)
+        eval(expandedOutput)
+        precondition(expanded.temporaryExpandedBytes > 0)
+        expanded.clearPrefillCache()
+        precondition(expanded.temporaryExpandedBytes == 0)
+        precondition(all(expandedOutput .== expanded.linear(expandedInput, prefill: true)).item(Bool.self))
+        print("PASS: paged PLE rows, duplicate IDs, expert GEMV/grouped remapping, zero-budget/LRU eviction and expanded-cache release")
         let gdnWeights = try Qwen4GGUFModel.GDNGraphWeights(
             qkv: fixture(type: 8, experts: 1, width: 2560, rows: 10240, name: "blk.0.attn_qkv.weight"),
             gate: fixture(type: 8, experts: 1, width: 2560, rows: 6144, name: "blk.0.attn_gate.weight"),

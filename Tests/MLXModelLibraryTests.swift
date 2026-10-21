@@ -18,6 +18,22 @@ struct MLXModelLibraryTests {
         precondition(scalarGather.asArray(Int32.self) == [4, 5, 6, 7, 16, 17, 18, 19])
         print("PASS: scalar Gather metadata binds valid Metal bytes and preserves values")
         MLXRandom.seed(42)
+        for bits in [4, 8] {
+            let gate = QuantizedLinear(128, 256, bias: false, groupSize: 64, bits: bits)
+            let up = QuantizedLinear(128, 256, bias: false, groupSize: 64, bits: bits)
+            let down = QuantizedLinear(256, 128, bias: false, groupSize: 64, bits: 4)
+            let fused = LocalQwenDenseOptimization.FusedMLP(gate: gate, up: up, down: down)!
+            for count in [1, 2, 128] {
+                let x = MLXRandom.normal([1, count, 128]).asType(.bfloat16)
+                let expected = down(silu(gate(x)) * up(x))
+                let actual = fused(x)
+                let error = abs(expected.asType(.float32) - actual.asType(.float32)).max().item(Float.self)
+                precondition(error < 0.01, "Dense fusion mismatch: bits=\(bits), tokens=\(count), error=\(error)")
+            }
+            let incompatible = QuantizedLinear(128, 256, bias: false, groupSize: 64, bits: bits == 4 ? 8 : 4)
+            precondition(LocalQwenDenseOptimization.FusedMLP(gate: gate, up: incompatible, down: down) == nil)
+        }
+        print("PASS: dense gate/up fusion preserves 4/8-bit BF16 decode, MTP and prefill outputs; mixed pairs fall back")
         for type in ["qwen3", "qwen3_next", "qwen3_5", "qwen3_5_text"] {
             let supported = await LLMTypeRegistry.shared.contains(type)
             precondition(supported, "Missing upgraded architecture: \(type)")
@@ -98,7 +114,31 @@ struct MLXModelLibraryTests {
         } catch LocalQwenMTP.AdapterError.unsupportedGate { }
         try testSwishGDN()
         try testSigmoidAttention()
+        try testDenseFusionInstallation()
         try await testMTPCheckpoint(root: root)
+    }
+
+    static func testDenseFusionInstallation() throws {
+        let cfg = try JSONDecoder().decode(Qwen35TextConfiguration.self, from: Data(tinyConfig.utf8))
+        let baseline = Qwen35TextModel(cfg)
+        let fused = Qwen35TextModel(cfg)
+        quantize(model: baseline, groupSize: 64, bits: 4)
+        quantize(model: fused, groupSize: 64, bits: 4)
+        try fused.update(parameters: baseline.parameters(), verify: .all)
+        let count = try LocalQwenDenseOptimization.install(on: fused)
+        precondition(count == 2)
+        let secondCount = try LocalQwenDenseOptimization.install(on: fused)
+        precondition(secondCount == 0)
+        let originalCache = try baseline.newCache(parameters: nil as GenerateParameters?)
+        let fusedCache = try fused.newCache(parameters: nil as GenerateParameters?)
+        for tokens in [[1, 2, 3, 4], [5], [6], [7, 8], [9]] {
+            let input = MLXArray(tokens)[.newAxis]
+            let expected = baseline(input, cache: originalCache)
+            let actual = fused(input, cache: fusedCache)
+            let delta = abs(expected - actual).max().item(Float.self)
+            precondition(delta < 0.001, "Fusion changed full-model logits: \(delta)")
+        }
+        print("PASS: dense fusion installs once per layer and preserves full-model prefill/decode/cache logits")
     }
 
     // An independent one-token GDN calculation. Initial recurrent state is zero,
