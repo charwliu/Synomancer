@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Applications/Synomancer/Assets.xcassets/AppIcon.appiconset/1024.png" alt="Synomancer App Icon" width="128" height="128">
+</p>
+
 # Synomancer · 思诺曼
 
 以 SwiftUI 和 Swift + MLX 构建的 Apple Silicon 本地 AI 客户端。
