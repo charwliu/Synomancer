@@ -87,7 +87,7 @@ python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
 
 python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --chat
+  --cache ~/.cache/huggingface/hub --chat
 ```
 
 `--chat-library` 使用小型合成 MLX checkpoint 检查 4/8-bit 混合量化 logits、
@@ -102,7 +102,7 @@ python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
 ```sh
 python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --chat-mtp \
+  --cache ~/.cache/huggingface/hub --chat-mtp \
   --model mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit
 ```
 
@@ -157,7 +157,7 @@ tokens/s，MTP 草稿接受 56/70。随后分进程连续测试出现明显速�
 ```sh
 SYNOMANCER_QWEN_BENCH_PAIRED=1 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
-  --configuration Release --cache /path/to/workspace/.cache/huggingface/hub \
+  --configuration Release --cache ~/.cache/huggingface/hub \
   --chat-mtp --model mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit
 ```
 
@@ -195,7 +195,7 @@ python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData
   --chat-library --metal-validation
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --chat --metal-validation \
+  --cache ~/.cache/huggingface/hub --chat --metal-validation \
   --model lmstudio-community/gemma-4-31B-it-MLX-8bit
 ```
 

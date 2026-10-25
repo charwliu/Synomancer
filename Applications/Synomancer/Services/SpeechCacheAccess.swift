@@ -7,7 +7,8 @@ import AppKit
 /// Model downloads upgrade the grant to read/write through the native picker.
 enum SpeechCacheAccess {
     static let homeKey = "HF_HOME"
-    static let defaultPath = "/path/to/workspace/.cache/huggingface/hub"
+    static let defaultPath = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".cache/huggingface/hub", isDirectory: true).path
     static let bookmarkKey = "localSpeechCacheBookmark"
     // Retained for migration and to associate an existing bookmark with its path.
     static let pathKey = "localSpeechCachePath"

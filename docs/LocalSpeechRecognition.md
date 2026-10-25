@@ -16,13 +16,13 @@ Synomancer 使用 Swift + MLX 运行 Qwen3-ASR 1.7B。
 ## 使用已有 Hugging Face 缓存
 
 设置中的 **Hugging Face → HF_HOME** 是聊天/ASR/TTS 共用的唯一缓存设置，
-默认 `/path/to/workspace/.cache/huggingface/hub`。通过 **Choose HF_HOME Folder…** 可以选择
+默认 `~/.cache/huggingface/hub`。通过 **Choose HF_HOME Folder…** 可以选择
 `huggingface`、`hub`、模型仓库目录或可独立读取的模型目录。
 macOS 建议选择 `hub` 根目录：snapshot 中的权重通常通过符号链接指向
 仓库的 `blobs`，沙盒需要同时获得这两部分的读取授权。选择的目录通过
 只读 security-scoped bookmark 保存。
 
-本机缓存目录为 `/path/to/workspace/.cache/huggingface/hub`，已有
+本机缓存目录为 `~/.cache/huggingface/hub`，已有
 `mlx-community/Qwen3-ASR-1.7B-bf16`。
 读取这份缓存时，将文本解码器矩阵在内存中量化为 4bit，以降低推理成本；
 音频编码器保留原始 dtype。缓存文件保持不变，不写回量化权重，不重复下载。
@@ -53,7 +53,7 @@ python3 Tests/run-asr-tests.py --derived-data /path/to/Synomancer-DerivedData --
 ```sh
 python3 Tests/run-asr-tests.py \
   --derived-data /path/to/Synomancer-DerivedData \
-  --cache /path/to/workspace/.cache/huggingface/hub \
+  --cache ~/.cache/huggingface/hub \
   --audio /path/to/speech.wav --offline
 ```
 

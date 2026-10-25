@@ -6,7 +6,7 @@ App 顶部工具栏的照片按钮打开“图像生成与编辑”。输入描�
 
 运行时完全使用 Swift + MLX，不启动 Python、服务器或云端 API。
 模型通过与聊天、ASR、TTS 相同的 HF_HOME 及文件夹授权读取，
-默认 /path/to/workspace/.cache/huggingface/hub。缓存只读，不自动下载。
+默认 ~/.cache/huggingface/hub。缓存只读，不自动下载。
 默认优先选择完整的小型量化缓存；缺失分片的快照不会显示。
 
 推荐现有 mlx-community/Qwen-Image-2.1-MLX-4bit（约 10.5GB 权重）。
@@ -47,7 +47,7 @@ CPU Diffusers 小模型对照覆盖生成/参考图编辑、不同正负文本�
 ```sh
 python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --image --image-size 512 \
+  --cache ~/.cache/huggingface/hub --image --image-size 512 \
   --image-steps 8 --image-negative-prompt 'blurry, watermark, text, distorted handle' \
   --image-output .build/NegativePrompt/images
 ```
@@ -94,13 +94,13 @@ VAE 的共享卷积实现保留 MFLUX MIT 版权，见 [MFLUX MIT](licenses/MFLU
 数值验证以现有 Python 开发环境运行 CPU oracle；App 本身不调用 Python。
 
 ~~~sh
-/path/to/workspace/aiml/transformer/.venv/bin/python Tests/make-flux1-parity.py
+python3 Tests/make-flux1-parity.py
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release --flux1-parity \
-  --cache /path/to/workspace/.cache/huggingface/hub --metal-validation
+  --cache ~/.cache/huggingface/hub --metal-validation
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release --image-flux1 \
-  --cache /path/to/workspace/.cache/huggingface/hub --image-output .build/Flux1Images \
+  --cache ~/.cache/huggingface/hub --image-output .build/Flux1Images \
   --metal-validation
 ~~~
 
@@ -167,7 +167,7 @@ FLUX 两轮波动约 51%，原因尚未通过算子或 GPU 性能分析定位，
 ~~~sh
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub \
+  --cache ~/.cache/huggingface/hub \
   --image-model-benchmark --image-size 768 \
   --image-output .build/ImageModelComparison
 ~~~
@@ -219,9 +219,9 @@ Transformer 与完整 Mistral 导出的二维权重量化（含 embedding），�
 输出先写入暂存目录，全部完成后发布；已有输出或未完成暂存目录会拒绝覆盖。
 
 ~~~sh
-/path/to/workspace/aiml/qwen3-asr/.venv/bin/python Tools/quantize-flux2-dev.py \
-  --source /path/to/workspace/.cache/huggingface/hub/models--black-forest-labs--FLUX.2-dev/snapshots/26afe3a78bb242c0a8bb181dcc8937bb16e5c66c \
-  --output /path/to/workspace/.cache/huggingface/hub/models--local--FLUX.2-dev-MLX-8bit/snapshots/26afe3a78bb242c0a8bb181dcc8937bb16e5c66c-q8-g64
+python3 Tools/quantize-flux2-dev.py \
+  --source ~/.cache/huggingface/hub/models--black-forest-labs--FLUX.2-dev/snapshots/26afe3a78bb242c0a8bb181dcc8937bb16e5c66c \
+  --output ~/.cache/huggingface/hub/models--local--FLUX.2-dev-MLX-8bit/snapshots/26afe3a78bb242c0a8bb181dcc8937bb16e5c66c-q8-g64
 ~~~
 
 App 图像面板刷新后选择 **`local/FLUX.2-dev-MLX-8bit`**。
@@ -247,7 +247,7 @@ Mistral 第 10/20/30 层、左侧 padding 和量化 embedding；同时保留原�
 ~~~sh
 hf download black-forest-labs/FLUX.2-dev \
   --revision 26afe3a78bb242c0a8bb181dcc8937bb16e5c66c \
-  --cache-dir /path/to/workspace/.cache/huggingface/hub \
+  --cache-dir ~/.cache/huggingface/hub \
   --exclude 'flux2-dev.safetensors' 'ae.safetensors'
 ~~~
 
@@ -291,7 +291,7 @@ hf download black-forest-labs/FLUX.2-dev \
   --local-dir .build/Flux2DevMetadata \
   --include 'model_index.json' 'transformer/config.json' 'text_encoder/config.json' \
     'vae/config.json' 'scheduler/scheduler_config.json' 'tokenizer/*'
-/path/to/workspace/aiml/transformer/.venv/bin/python Tests/make-flux2-dev-parity.py
+python3 Tests/make-flux2-dev-parity.py
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release \
   --flux2-dev-parity --metal-validation
@@ -303,7 +303,7 @@ MLX 8bit 完整缓存的实际生成/编辑（M4 Max 128 GiB）：
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release \
   --image-flux2-dev --image-size 512 \
-  --cache /path/to/workspace/.cache/huggingface/hub/models--local--FLUX.2-dev-MLX-8bit \
+  --cache ~/.cache/huggingface/hub/models--local--FLUX.2-dev-MLX-8bit \
   --image-output .build/Flux2Q8/images
 ~~~
 
@@ -316,12 +316,12 @@ python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData
 在图像面板点击“刷新”，选择 `mlx-community/FLUX.2-klein-9B`；不选择参考图时
 生成照片，选择参考照片后输入修改指令即可编辑。共用设置中的 HF_HOME。
 
-缓存位置为 `/path/to/workspace/.cache/huggingface/hub`。下载命令：
+缓存位置为 `~/.cache/huggingface/hub`。下载命令：
 
 ~~~sh
 hf download mlx-community/FLUX.2-klein-9B \
   --revision b0f0826a36667ec7c58253e50557ba76f8c0255e \
-  --cache-dir /path/to/workspace/.cache/huggingface/hub \
+  --cache-dir ~/.cache/huggingface/hub \
   --exclude 'flux-2-klein-9b.safetensors'
 ~~~
 
@@ -346,16 +346,16 @@ BF16 计算已通过完整权重生成/编辑验证。不会改写 HF 缓存文�
 数值回归使用 CPU Diffusers/Transformers 创建小模型夹具：
 
 ~~~sh
-/path/to/workspace/aiml/transformer/.venv/bin/python Tests/make-flux2-parity.py
+python3 Tests/make-flux2-parity.py
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release --flux2-parity --metal-validation
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release --image-flux2 \
-  --cache /path/to/workspace/.cache/huggingface/hub --image-output .build/Flux2Images \
+  --cache ~/.cache/huggingface/hub --image-output .build/Flux2Images \
   --image-size 768 --metal-validation
 python3 Tests/run-asr-tests.py --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release --flux2-checks \
-  --cache /path/to/workspace/.cache/huggingface/hub --metal-validation
+  --cache ~/.cache/huggingface/hub --metal-validation
 ~~~
 
 Swift 实现参考 [MFLUX](https://github.com/mflux-community/mflux/tree/02bbe7bc36b2e32edca8f255a1ec494878c77fcc/src/mflux/models/flux2)
@@ -448,9 +448,9 @@ Vision 人体姿态骨架图。自动深度使用 Apple 的
 现有 PyTorch 权重只需转换一次，转换脚本依赖 torch/numpy，App 运行时不需要：
 
 ~~~sh
-/path/to/workspace/aiml/real-esrgan/.venv/bin/python Tools/convert-realesrgan.py \
-  /path/to/workspace/aiml/real-esrgan/weights/RealESRGAN_x4plus.pth \
-  /path/to/workspace/.cache/huggingface/hub/synomancer/upscalers/RealESRGAN_x4plus.safetensors
+python3 Tools/convert-realesrgan.py \
+  /path/to/RealESRGAN_x4plus.pth \
+  ~/.cache/huggingface/hub/synomancer/upscalers/RealESRGAN_x4plus.safetensors
 ~~~
 
 脚本严格检查官方网络形状，优先使用 EMA 权重，将卷积 OIHW 转为 MLX 的
@@ -503,7 +503,7 @@ python3 Tests/run-asr-tests.py \
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
   --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --image --metal-validation
+  --cache ~/.cache/huggingface/hub --image --metal-validation
 ~~~
 
 上述 Python 仅调用 Swift 编译器并启动原生测试程序，不参与模型推理。
@@ -523,11 +523,11 @@ PNG 保存在忽略的 .build/ImageTestOutput。需查看图片确认语义和�
 数值参考夹具由开发期 CPU Diffusers 产生：
 
 ~~~sh
-/path/to/workspace/aiml/transformer/.venv/bin/python \
+python3 \
   Tests/create-image-parity-fixtures.py .build/ImageParity
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
-  --configuration Release --cache /path/to/workspace/.cache/huggingface/hub \
+  --configuration Release --cache ~/.cache/huggingface/hub \
   --image-parity --metal-validation
 ~~~
 
@@ -631,7 +631,7 @@ CLI 基准不运行 UI 流光效果。
 python3 Tests/run-asr-tests.py \
   --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub \
+  --cache ~/.cache/huggingface/hub \
   --image --image-prefix-benchmark \
   --image-reference .build/ImagePerformance/baseline/generated-red-mug.png
 ```
@@ -660,7 +660,7 @@ python3 Tests/run-asr-tests.py \
 python3 Tests/run-asr-tests.py \
   --derived-data /private/tmp/SynomancerDerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub \
+  --cache ~/.cache/huggingface/hub \
   --reference-prompt --model lmstudio-community/gemma-4-31B-it-MLX-8bit \
   --image-reference .build/ImagePerformance/prefix-cache/generated-red-mug.png
 ```

@@ -1,5 +1,6 @@
 """CPU-only Diffusers/Transformers numerical oracle for native FLUX.1."""
 import json
+import os
 from pathlib import Path
 import torch
 import diffusers
@@ -12,7 +13,9 @@ torch.set_num_threads(4)
 torch.manual_seed(812)
 root = Path(__file__).resolve().parents[1] / '.build/Flux1Parity'
 root.mkdir(parents=True, exist_ok=True)
-cache = Path('/path/to/workspace/.cache/huggingface/hub/models--black-forest-labs--FLUX.1-dev')
+hf_home = Path(os.environ.get('HF_HOME', Path.home() / '.cache/huggingface')).expanduser()
+hub = hf_home if hf_home.name == 'hub' else hf_home / 'hub'
+cache = hub / 'models--black-forest-labs--FLUX.1-dev'
 revision = (cache / 'refs/main').read_text().strip()
 snapshot = cache / 'snapshots' / revision
 

@@ -7,7 +7,7 @@ struct HFHomeConfigurationTests {
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         let initial = SpeechCacheAccess.configuration(in: defaults)
-        precondition(initial.path == "/path/to/workspace/.cache/huggingface/hub" && initial.bookmark == nil)
+        precondition(initial.path == "\(NSHomeDirectory())/.cache/huggingface/hub" && initial.bookmark == nil)
         let initialURL = try initial.resolve()
         precondition(initialURL.path == initial.path)
         print("PASS: default HF_HOME used without a stored preference")

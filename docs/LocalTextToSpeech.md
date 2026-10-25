@@ -2,7 +2,7 @@
 
 设置 → Read Aloud → Speech Model 选择 **Local Qwen3-TTS 1.7B**。
 缓存使用设置 → Hugging Face → **HF_HOME**，与 ASR 共用，默认
-`/path/to/workspace/.cache/huggingface/hub`。首次需要通过 **Choose HF_HOME Folder…**
+`~/.cache/huggingface/hub`。首次需要通过 **Choose HF_HOME Folder…**
 授权外部目录；若已授权同一目录，无需重选。
 若首次朗读/录音无法读取 HF_HOME，macOS 会弹出授权文件夹选择器，选择缓存根目录
 后继续原操作。取消选择器会取消当前操作；已授权且可读取时不重复弹出。
@@ -92,7 +92,7 @@ xcodebuild -project Synomancer.xcodeproj -scheme Synomancer-Release \
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
   --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --tts-streaming
+  --cache ~/.cache/huggingface/hub --tts-streaming
 ```
 
 此测试只读加载 TTS 和 ASR 缓存，测量非流式 RTF、流式首块/首个非静音块延迟
@@ -111,7 +111,7 @@ AVAudioEngine 验证首段完成前开始播放、停止后立即重启、完整
 ```sh
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
-  --configuration Release --cache /path/to/workspace/.cache/huggingface/hub \
+  --configuration Release --cache ~/.cache/huggingface/hub \
   --tts-continuity
 ```
 

@@ -32,7 +32,7 @@ python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
 
 python3 Tests/run-asr-tests.py --derived-data .build/DerivedData \
   --source-packages .build/SourcePackages --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --chat-muse
+  --cache ~/.cache/huggingface/hub --chat-muse
 ```
 
 `--muse-components` 不需要下载权重：检查 ATEM 分帧、思考、Unicode、字面标记、
@@ -68,7 +68,7 @@ patch/token 数量和缓存发现。它不代表真实 30B 模型推理通过。
 ## 本地缓存与聊天
 
 设置 → Hugging Face → **HF_HOME** 与 ASR/TTS 共用，默认：
-`/path/to/workspace/.cache/huggingface/hub`。
+`~/.cache/huggingface/hub`。
 使用 **Choose HF_HOME Folder…** 授权缓存根目录，然后点击
 **Refresh Models** 或 **Save**。可在 **Chat Models → Default Model**
 指定默认模型，也可在聊天模型菜单中切换。
@@ -122,12 +122,12 @@ App 不会给基座模型注入指令模板，也不会修改 HF 缓存或自动
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
   --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --chat
+  --cache ~/.cache/huggingface/hub --chat
 
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
   --configuration Release \
-  --cache /path/to/workspace/.cache/huggingface/hub --chat-store
+  --cache ~/.cache/huggingface/hub --chat-store
 ```
 
 `--chat` 执行真实缓存模型推理，验证多轮上下文和取消后立即重启。

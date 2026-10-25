@@ -1,6 +1,6 @@
 # Hugging Face 模型下载
 
-设置 → Hugging Face → **下载 HF 模型**。输入 `namespace/model` 和 Revision（默认 `main`），先点击“检查模型”查看文件数量、总大小和固定的 commit，再点击“下载到 HF_HOME”。默认缓存为 `/path/to/workspace/.cache/huggingface/hub`，与聊天、图像、ASR、TTS 共用。
+设置 → Hugging Face → **下载 HF 模型**。输入 `namespace/model` 和 Revision（默认 `main`），先点击“检查模型”查看文件数量、总大小和固定的 commit，再点击“下载到 HF_HOME”。默认缓存为 `~/.cache/huggingface/hub`，与聊天、图像、ASR、TTS 共用。
 
 首次下载需要在 macOS 文件夹选择器中选择 HF_HOME，授予写入权限；此前的模型读取授权仅允许读取。可以选择 `huggingface` 根目录或 `hub` 目录，前者的模型保存到其 `hub` 子目录。后续下载复用保存的授权。
 

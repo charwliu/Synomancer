@@ -94,11 +94,11 @@ for chunk in stream:
 ```sh
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
-  --configuration Release --cache /path/to/workspace/.cache/huggingface/hub --chat-api
+  --configuration Release --cache ~/.cache/huggingface/hub --chat-api
 
 python3 Tests/run-asr-tests.py \
   --derived-data .build/DerivedData --source-packages .build/SourcePackages \
-  --configuration Release --cache /path/to/workspace/.cache/huggingface/hub --chat-store
+  --configuration Release --cache ~/.cache/huggingface/hub --chat-store
 ```
 
 `--chat-api` 使用真实缓存模型和真实 loopback TCP/HTTP 测试本地模型列表、认证、
