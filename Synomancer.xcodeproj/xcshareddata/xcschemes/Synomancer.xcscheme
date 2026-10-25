@@ -1,20 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2700"
+   LastUpgradeVersion = "2710"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
       buildArchitectures = "Automatic">
       <PreActions>
-         <ExecutionAction ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent title = "Backport MLX Metal empty-vector fix"
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Backport MLX Metal empty-vector fix"
                scriptText = "set -e&#10;/usr/bin/env -u SDKROOT -u XCODE_DEVELOPER_DIR_PATH /usr/bin/xcrun --sdk macosx python3 &quot;$PROJECT_DIR/Scripts/backport-mlx-metal.py&quot;&#10;">
                <EnvironmentBuildable>
-                  <BuildableReference BuildableIdentifier = "primary"
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
                      BlueprintIdentifier = "01198B842C92A5E600BA8CA3"
-                     BuildableName = "Synomancer.app" BlueprintName = "Synomancer"
-                     ReferencedContainer = "container:Synomancer.xcodeproj"/>
+                     BuildableName = "Synomancer.app"
+                     BlueprintName = "Synomancer"
+                     ReferencedContainer = "container:Synomancer.xcodeproj">
+                  </BuildableReference>
                </EnvironmentBuildable>
             </ActionContent>
          </ExecutionAction>

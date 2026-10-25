@@ -1483,6 +1483,9 @@
     "MTP uses a compatible Qwen model’s local draft weights at temperature 0. Other models and temperatures use ordinary generation. Completion shortcuts and API requests keep their own temperature." : {
 
     },
+    "Muse Glimmer 30B MXFP8 · Native" : {
+
+    },
     "Name" : {
 
     },
