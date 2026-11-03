@@ -84,8 +84,20 @@ Gemini 内部模型 ID 带 `gemini:` 前缀，请求中发送原始模型 ID。
 设置 → **Local API** 标签 → **Local MLX API**：
 
 1. 选择端口，默认 `8080`。
-2. 生成或填写 **Local API Access Token**；这是本地服务的密钥，与 Gemini API Key 独立。
+2. 点击 **Generate Access Token**，成功后显示 **New access token saved in Keychain.**。
+   每次生成新的 64 位十六进制随机令牌；掩码长度相同，不能据此判断令牌没有变化。
+   可用 **Show Token / Hide Token** 查看或隐藏，用 **Copy Access Token** 配置客户端。
+   这是本地服务的密钥，与 OpenAI / Gemini API Key 独立。
 3. 点击 **Start Local API**。必要时通过目录选择器授权 HF_HOME。
+   运行或启动中不能替换令牌，需先 **Stop Local API**。已运行时仍可查看和复制。
+
+生成的令牌立即保存到 Keychain，保存失败会显示错误并保留原输入值。
+手动填写的令牌至少 16 个字符，不能含内部空白或控制字符；在启动服务时校验并保存。
+令牌不会写入偏好设置、源码或日志。
+
+人工验证：停止 API → 生成并确认成功提示 → 显示/复制令牌 → 再次生成，确认内容变化 →
+重开设置确认保留最后生成的令牌。随后启动 API，用当前令牌访问 `/v1/models`；
+缺少令牌或使用旧令牌应得到 HTTP 401。请勿在反馈中提供实际令牌。
 
 地址为 `http://127.0.0.1:8080/v1`，固定只绑定本机 IPv4 loopback。
 每个请求都需要 `Authorization: Bearer <本地访问令牌>`。

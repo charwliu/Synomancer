@@ -284,7 +284,7 @@ final class LocalChatAPIServer {
             guard let port = UInt16(preferences.string(forKey: "localAPIPort") ?? "8080") else {
                 throw OpenAIError.message("Invalid local API port.")
             }
-            let token = try ChatSecrets.read("local-server")
+            let token = try ChatSecrets.read(LocalAPIAccessToken.keychainAccount)
             // Restoring uses the saved grant; it never opens a folder picker at launch.
             let cache = SpeechCacheAccess.configuration(in: preferences)
             _ = try await LocalChatService.shared.models(cache: cache)

@@ -141,7 +141,7 @@ elif args.chat or args.chat_store or args.chat_api or args.chat_library or args.
             'Applications/Synomancer/Services/OpenAIChatService.swift']]
     if args.chat_api:
         command += [str(root / 'Applications/Synomancer/Services/ChatGenerationService.swift'), str(root / 'Applications/Synomancer/Models/LanguageModel.swift')]
-        command += [str(root / 'Applications/Synomancer/Services/LocalChatAPIServer.swift'), str(root / 'Tests/OpenAIEndpointTests.swift'), str(root / 'Tests/OpenAIServiceTests.swift')]
+        command += [str(root / 'Applications/Synomancer/Services/LocalChatAPIServer.swift'), str(root / 'Tests/OpenAIEndpointTests.swift'), str(root / 'Tests/OpenAIServiceTests.swift'), str(root / 'Applications/Synomancer/Services/LocalAPIAccessToken.swift'), str(root / 'Tests/LocalAPIAccessTokenTests.swift')]
     if args.chat_store:
         command += [str(root / 'Applications/Synomancer/Services/ChatGenerationService.swift'), str(root / 'Applications/Synomancer/Services/AutomaticResponseSpeech.swift')]
         objects += ['Synogging']
