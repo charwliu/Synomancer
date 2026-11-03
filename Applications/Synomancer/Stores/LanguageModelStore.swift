@@ -47,8 +47,8 @@ final class LanguageModelStore {
         discoveryID = request
         do {
             let geminiIDs = GeminiConfiguration.modelIDs(in: preferences)
-            let openAIIDs = OpenAIConfiguration.modelIDs(in: preferences)
-            let hasRemoteModels = !geminiIDs.isEmpty || !openAIIDs.isEmpty
+            let openAIServices = try OpenAIServices.load(in: preferences).filter { $0.enabled }
+            let hasRemoteModels = !geminiIDs.isEmpty || openAIServices.contains { !$0.modelIDs.isEmpty }
             var localModels: [LocalChatModel] = []
             do {
                 let cache = !hasRemoteModels
@@ -71,13 +71,22 @@ final class LanguageModelStore {
                 model.isAvailable = true
                 available.append(model)
             }
-            for (provider, prefix, ids) in [(ModelProvider.gemini, "gemini:", geminiIDs),
-                                            (.openai, "openai:", openAIIDs)] {
-                for id in ids {
-                    let name = prefix + id
+            for id in geminiIDs {
+                let name = "gemini:" + id
+                let model = stored.first(where: { $0.name == name })
+                    ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .gemini)
+                model.provider = .gemini
+                model.imageSupport = false
+                model.isAvailable = true
+                available.append(model)
+            }
+            for service in openAIServices {
+                for id in service.modelIDs {
+                    let name = service.modelName(id)
                     let model = stored.first(where: { $0.name == name })
-                        ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: provider)
-                    model.provider = provider
+                        ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .openai)
+                    model.provider = .openai
+                    model.remoteServiceName = service.name
                     model.imageSupport = false
                     model.isAvailable = true
                     available.append(model)

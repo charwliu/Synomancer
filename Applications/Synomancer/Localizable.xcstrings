@@ -131,7 +131,13 @@
     "Accounts" : {
 
     },
+    "Add Service" : {
+
+    },
     "API Key" : {
+
+    },
+    "API Key (optional for compatible servers)" : {
 
     },
     "API Models" : {
@@ -144,6 +150,9 @@
 
     },
     "Apply Gemini Settings" : {
+
+    },
+    "Apply OpenAI Services" : {
 
     },
     "Are you sure you want to delete '%@'?" : {
@@ -179,6 +188,9 @@
 
     },
     "Automatic (Chinese / English)" : {
+
+    },
+    "Base URL" : {
 
     },
     "Blur" : {
@@ -645,6 +657,9 @@
         }
       }
     },
+    "Default: https://api.openai.com/v1. Include the API path prefix (such as /v1), without /responses or /chat/completions. Remote APIs require HTTPS; loopback servers may use HTTP. Requests do not follow redirects." : {
+
+    },
     "Delete" : {
       "localizations" : {
         "ja" : {
@@ -756,10 +771,16 @@
     "Drop your image here" : {
 
     },
+    "Each service has its own models and Keychain credentials, even when Base URLs match. Changing a URL loads only that service’s key for the destination. Removing a service and applying deletes its saved keys; existing conversations remain." : {
+
+    },
     "Edit" : {
 
     },
     "Enable Gemini models" : {
+
+    },
+    "Enable this service" : {
 
     },
     "Endpoint" : {
@@ -1006,6 +1027,9 @@
 
     },
     "Get a Gemini API key" : {
+
+    },
+    "Get an OpenAI API key" : {
 
     },
     "GPU Cache Limit" : {
@@ -1552,7 +1576,7 @@
         }
       }
     },
-    "No chat model found. Choose HF_HOME or configure Gemini." : {
+    "No chat model found. Choose HF_HOME or configure OpenAI or Gemini." : {
 
     },
     "No chat model is available. Choose HF_HOME for local MLX or configure Gemini in Settings." : {
@@ -1626,6 +1650,9 @@
 
     },
     "Open Settings" : {
+
+    },
+    "OpenAI-compatible Services" : {
 
     },
     "Please enter Hugging Face Repo ID" : {
@@ -1820,6 +1847,9 @@
         }
       }
     },
+    "Remove Service" : {
+
+    },
     "Repetition Context Size" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1986,7 +2016,13 @@
     "Select text generation models to add to the chat menu." : {
 
     },
+    "Select text models supported by this service and API mode." : {
+
+    },
     "Selecting a Gemini model sends conversation text to Google Gemini. Local MLX remains available." : {
+
+    },
+    "Selecting a model sends conversation text and this service’s key to its configured endpoint. Only use services you trust." : {
 
     },
     "Send" : {
@@ -2022,6 +2058,12 @@
 
     },
     "Serve local MLX text models to OpenAI-compatible clients on this Mac." : {
+
+    },
+    "Service" : {
+
+    },
+    "Service name" : {
 
     },
     "Settings" : {
@@ -2307,6 +2349,9 @@
         }
       }
     },
+    "Turn it off for services or models that require Chat Completions." : {
+
+    },
     "Unselect" : {
 
     },
@@ -2431,6 +2476,9 @@
           }
         }
       }
+    },
+    "Use Responses API" : {
+
     },
     "Use System Prompt" : {
       "extractionState" : "stale",

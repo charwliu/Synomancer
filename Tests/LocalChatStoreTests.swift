@@ -44,6 +44,7 @@ struct LocalChatStoreTests {
         print("PASS: MLX discovery/selection preserves old provider rows and conversations")
 
         try await remoteModelTests(data: data, preferences: preferences, models: models)
+        try await multipleServiceTests(data: data, preferences: preferences, models: models)
         if CommandLine.arguments.contains("--remote-only") { return }
 
         var spoken: [String] = []
@@ -191,6 +192,66 @@ struct LocalChatStoreTests {
         precondition(remoteHistory.contains { $0.id == savedRemote.id && $0.model?.provider == .gemini })
         precondition(remoteHistory.contains { $0.id == savedOpenAI.id && $0.model?.provider == .openai })
         print("PASS: provider routing rejects disabled Gemini without MLX fallback; refresh preserves remote conversation")
+    }
+
+    static func multipleServiceTests(data: SwiftDataService, preferences: UserDefaults, models: LanguageModelStore) async throws {
+        defer { preferences.removeObject(forKey: OpenAIServices.preferencesKey) }
+        let a = OpenAIService(name: "Alpha", models: "shared-model\nvendor/model:revision", enabled: true)
+        var b = OpenAIService(name: "Beta", models: "shared-model", enabled: true)
+        try OpenAIServices.save([a, b], in: preferences)
+        try await models.loadModels()
+        let first = models.models.first { $0.name == a.modelName("shared-model") }!
+        let second = models.models.first { $0.name == b.modelName("shared-model") }!
+        let revision = models.models.first { $0.name == a.modelName("vendor/model:revision") }!
+        precondition(first !== second && first.requestModelID == second.requestModelID)
+        precondition(first.openAIServiceID == a.id && second.openAIServiceID == b.id)
+        precondition(first.displayName == "Alpha · shared-model" && second.displayName == "Beta · shared-model")
+        precondition(revision.requestModelID == "vendor/model:revision")
+        models.setModel(model: second)
+        preferences.set(second.name, forKey: "defaultMLXModel")
+        let history = ConversationSD(name: "Multi-service fixture")
+        history.model = second
+        try data.createConversation(history)
+        b.name = "Renamed Beta"
+        try OpenAIServices.save([a, b], in: preferences)
+        try await models.loadModels()
+        precondition(models.selectedModel === second && second.displayName == "Renamed Beta · shared-model")
+        let reopened = LanguageModelStore(swiftDataService: data, preferences: preferences)
+        try await reopened.loadModels()
+        precondition(reopened.selectedModel?.name == second.name && reopened.selectedModel?.openAIServiceID == b.id)
+        b.enabled = false
+        try OpenAIServices.save([a, b], in: preferences)
+        try await models.loadModels()
+        precondition(!models.models.contains { $0.name == second.name })
+        let automatic = AutomaticResponseSpeech(preferences: preferences, speak: { _ in preconditionFailure("Failed request was spoken") }, stop: {})
+        let chat = ConversationStore(swiftDataService: data, preferences: preferences, automaticSpeech: automatic)
+        try await chat.selectConversation(history)
+        chat.sendPrompt(userPrompt: "Disabled service", model: second)
+        let started = Date()
+        while chat.conversationState == .loading && Date().timeIntervalSince(started) < 5 { try await Task.sleep(for: .milliseconds(20)) }
+        if case .error(let error) = chat.conversationState { precondition(error.contains("disabled")) }
+        else { preconditionFailure("Selected service was not routed independently") }
+        #if os(macOS)
+        let panel = CompletionsPanelVM(preferences: preferences)
+        panel.selectedText = "Fixture text"
+        AppStore.shared.notifications = []
+        panel.sendPrompt(completion: CompletionInstructionSD(name: "Fixture", keyboardCharacterStr: "f", instruction: "Summarize", order: 0), model: second)
+        let panelStart = Date()
+        while panel.isReady && Date().timeIntervalSince(panelStart) < 5 { try await Task.sleep(for: .milliseconds(20)) }
+        precondition(!panel.isReady && AppStore.shared.notifications.first?.message.contains("disabled") == true)
+        #endif
+        try OpenAIServices.save([a], in: preferences)
+        try await models.loadModels()
+        let savedConversations = try data.fetchConversations()
+        precondition(savedConversations.contains { $0.id == history.id && $0.model?.name == second.name })
+        do {
+            _ = try await ChatGenerationService.generate(modelID: second.requestModelID, provider: second.provider,
+                messages: [], preferences: preferences, openAIServiceID: second.openAIServiceID) { _, _ in }
+            preconditionFailure("Removed service fell back")
+        } catch { precondition(error.localizedDescription.contains("removed")) }
+        let savedModels = try data.fetchModels()
+        precondition(savedModels.contains { $0.name == "openai:legacy-model" })
+        print("PASS: same-name service menu models, stable selection/rename/reload, raw revision IDs, main chat and quick completion service routing, removed-service history retained")
     }
 
     static func waitForCompletion(_ chat: ConversationStore) async throws {

@@ -56,6 +56,7 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
 struct ChatAPITests {
     static func main() async throws {
         setbuf(stdout, nil)
+        try OpenAIServiceTests.configurationTests()
         try OpenAIEndpointTests.configurationTests()
         try await OpenAIEndpointTests.loopbackTests()
         try parserTests()

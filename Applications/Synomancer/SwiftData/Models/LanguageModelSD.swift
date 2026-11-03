@@ -16,6 +16,7 @@ final class LanguageModelSD: Identifiable {
     // Persist a primitive string. Legacy Codable enum storage can trap during
     // both reads and saves; existing rows recover their provider from the name.
     var providerID: String? = nil
+    var remoteServiceName: String? = nil
 
     var provider: ModelProvider {
         get {
@@ -26,7 +27,7 @@ final class LanguageModelSD: Identifiable {
             case "ollama": return .ollama
             default:
                 if name.hasPrefix("gemini:") { return .gemini }
-                if name.hasPrefix("openai:") { return .openai }
+                if name.hasPrefix("openai:") || name.hasPrefix("openai-service:") { return .openai }
                 return name.contains("/") ? .mlx : .ollama
             }
         }
@@ -57,10 +58,19 @@ final class LanguageModelSD: Identifiable {
 
 // MARK: - Helpers
 extension LanguageModelSD {
+    var openAIServiceID: String? {
+        guard provider == .openai, name.hasPrefix("openai-service:") else { return nil }
+        return name.dropFirst("openai-service:".count).split(separator: ":", maxSplits: 1).first.map(String.init)
+    }
+
     var requestModelID: String {
         switch provider {
         case .gemini: return name.hasPrefix("gemini:") ? String(name.dropFirst(7)) : name
-        case .openai: return name.hasPrefix("openai:") ? String(name.dropFirst(7)) : name
+        case .openai:
+            if name.hasPrefix("openai-service:"), let separator = name.dropFirst("openai-service:".count).firstIndex(of: ":") {
+                return String(name[name.index(after: separator)...])
+            }
+            return name.hasPrefix("openai:") ? String(name.dropFirst(7)) : name
         default: return name
         }
     }
@@ -68,7 +78,7 @@ extension LanguageModelSD {
     var displayName: String {
         switch provider {
         case .gemini: return "Gemini · " + requestModelID
-        case .openai: return "OpenAI · " + requestModelID
+        case .openai: return (remoteServiceName ?? openAIServiceID.map { "OpenAI " + $0.prefix(8) } ?? "OpenAI") + " · " + requestModelID
         default: return name
         }
     }

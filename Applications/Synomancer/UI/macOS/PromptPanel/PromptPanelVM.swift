@@ -32,6 +32,7 @@ final class CompletionsPanelVM {
         let request = UUID()
         let modelID = model.requestModelID
         let provider = model.provider
+        let openAIServiceID = model.openAIServiceID
         let temperature = Float(completion.modelTemperature ?? 0.8)
         requestID = request
         isReady = true
@@ -42,7 +43,7 @@ final class CompletionsPanelVM {
             do {
                 _ = await sentenceQueue.dequeueAll()
                 let result = try await ChatGenerationService.generate(modelID: modelID, provider: provider,
-                    messages: [.init(role: "user", content: prompt)], preferences: preferences, temperature: temperature) { [self] text, count in
+                    messages: [.init(role: "user", content: prompt)], preferences: preferences, openAIServiceID: openAIServiceID, temperature: temperature) { [self] text, count in
                         Task { @MainActor in
                             guard self.requestID == request, count > self.receivedTokens else { return }
                             self.receivedTokens = count

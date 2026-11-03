@@ -1,7 +1,6 @@
 import Foundation
 import Security
 import CryptoKit
-import Observation
 
 // Secrets are kept out of UserDefaults, SwiftData and exported conversations.
 enum ChatSecrets {
@@ -36,6 +35,23 @@ enum ChatSecrets {
             let added = SecItemAdd(insertion as CFDictionary, nil)
             guard added == errSecSuccess else { throw KeychainError(status: added) }
         } else if status != errSecSuccess { throw KeychainError(status: status) }
+    }
+
+    static func deleteOpenAIService(_ id: String) throws {
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service, kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll]
+        var value: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &value)
+        if status == errSecItemNotFound { return }
+        guard status == errSecSuccess, let items = value as? [[String: Any]] else { throw KeychainError(status: status) }
+        for item in items {
+            guard let account = item[kSecAttrAccount as String] as? String else { continue }
+            let matches = id == OpenAIService.legacyID
+                ? account == OpenAIConfiguration.keychainAccount || account.hasPrefix("openai.custom.")
+                : account.hasPrefix("openai.service." + id + ".")
+            if matches { try save("", account: account) }
+        }
     }
 
     static func newToken() throws -> String {
@@ -100,86 +116,31 @@ struct OpenAIConfiguration: Sendable {
         return Self(baseURL: url, apiKey: key, useResponses: useResponses, sendTemperature: sendTemperature)
     }
 
-    @MainActor static func load(in preferences: UserDefaults = .standard,
+    static func keychainAccount(serviceID: String, baseURL: URL) -> String {
+        if serviceID == OpenAIService.legacyID { return keychainAccount(for: baseURL) }
+        let digest = SHA256.hash(data: Data(baseURL.absoluteString.utf8))
+        return "openai.service." + serviceID + "." + digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    @MainActor static func load(serviceID: String? = nil, in preferences: UserDefaults = .standard,
         readKey: (String) throws -> String = { try ChatSecrets.read($0) }) throws -> Self {
-        guard preferences.bool(forKey: "openAIEnabled") else {
-            throw OpenAIError.message("OpenAI is disabled in Settings.")
+        let id = serviceID ?? OpenAIService.legacyID
+        guard let service = try OpenAIServices.load(in: preferences).first(where: { $0.id == id }) else {
+            throw OpenAIError.message("This OpenAI service was removed. Select an available model.")
         }
-        let url = try normalizedBaseURL(preferences.string(forKey: "openAIBaseURL") ?? "")
-        return try transport(apiKey: readKey(keychainAccount(for: url)), baseURL: url.absoluteString,
-            useResponses: preferences.object(forKey: "openAIUseResponses") as? Bool ?? true,
-            sendTemperature: preferences.bool(forKey: "openAISendTemperature"))
+        guard service.enabled else { throw OpenAIError.message("OpenAI is disabled for this service in Settings.") }
+        let url = try normalizedBaseURL(service.baseURL)
+        return try transport(apiKey: readKey(keychainAccount(serviceID: id, baseURL: url)), baseURL: url.absoluteString,
+                             useResponses: service.useResponses, sendTemperature: service.sendTemperature)
     }
 
     @MainActor static func modelIDs(in preferences: UserDefaults = .standard) -> [String] {
-        guard preferences.bool(forKey: "openAIEnabled") else { return [] }
-        return Array(Set((preferences.string(forKey: "openAIModels") ?? "")
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty })).sorted()
-    }
-}
-
-// The URL is a draft until Apply/Save. Switching endpoints never carries a key along.
-@Observable @MainActor
-final class OpenAISettingsState {
-    private(set) var baseURLText = OpenAIConfiguration.officialBaseURL.absoluteString
-    var apiKey = ""
-    private(set) var keyLoadError: String?
-    @ObservationIgnored private let preferences: UserDefaults
-    @ObservationIgnored private let readKey: (String) throws -> String
-    @ObservationIgnored private let writeKey: (String, String) throws -> Void
-    @ObservationIgnored private var keyEndpoint: URL?
-    @ObservationIgnored private var originalKey: String?
-
-    init(preferences: UserDefaults = .standard,
-         readKey: @escaping (String) throws -> String = { try ChatSecrets.read($0) },
-         writeKey: @escaping (String, String) throws -> Void = { try ChatSecrets.save($0, account: $1) }) {
-        self.preferences = preferences
-        self.readKey = readKey
-        self.writeKey = writeKey
+        // Retained for callers of the original single-service entry point.
+        guard let service = try? OpenAIServices.load(in: preferences).first(where: { $0.id == OpenAIService.legacyID }),
+              service.enabled else { return [] }
+        return service.modelIDs
     }
 
-    func load() {
-        setBaseURL(preferences.string(forKey: "openAIBaseURL") ?? "")
-    }
-
-    func setBaseURL(_ text: String) {
-        baseURLText = text
-        let endpoint = try? OpenAIConfiguration.normalizedBaseURL(text)
-        guard endpoint != keyEndpoint || endpoint == nil else { return }
-        apiKey = ""
-        originalKey = nil
-        keyLoadError = nil
-        keyEndpoint = endpoint
-        guard let endpoint else { return }
-        do {
-            let stored = try readKey(OpenAIConfiguration.keychainAccount(for: endpoint))
-            apiKey = stored
-            originalKey = stored
-        } catch {
-            keyLoadError = "Could not read this endpoint's API key from Keychain. Re-enter the key before enabling it."
-        }
-    }
-
-    func apply() throws {
-        let endpoint = try OpenAIConfiguration.normalizedBaseURL(baseURLText)
-        guard keyEndpoint == endpoint else { throw OpenAIError.message("Reload the endpoint settings before saving.") }
-        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if preferences.bool(forKey: "openAIEnabled") {
-            if keyLoadError != nil && key.isEmpty { throw OpenAIError.message(keyLoadError!) }
-            _ = try OpenAIConfiguration.transport(apiKey: key, baseURL: endpoint.absoluteString)
-        }
-        // A failed read must not turn an untouched empty field into a Keychain deletion.
-        if apiKey != (originalKey ?? "") {
-            try writeKey(key, OpenAIConfiguration.keychainAccount(for: endpoint))
-            originalKey = key
-            apiKey = key
-            keyLoadError = nil
-        }
-        preferences.set(endpoint.absoluteString, forKey: "openAIBaseURL")
-        baseURLText = endpoint.absoluteString
-    }
 }
 
 enum OpenAIError: LocalizedError {

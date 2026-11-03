@@ -2,7 +2,8 @@ import Foundation
 
 enum ChatGenerationService {
     @MainActor static func generate(modelID: String, provider: ModelProvider, messages: [LocalChatMessage],
-                                   preferences: UserDefaults = .standard, temperature: Float? = nil,
+                                   preferences: UserDefaults = .standard, openAIServiceID: String? = nil,
+                                   readOpenAIKey: (String) throws -> String = { try ChatSecrets.read($0) }, temperature: Float? = nil,
                                    onProgress: @escaping @Sendable (String, Double?) -> Void = { _, _ in },
                   onUpdate: @escaping @Sendable (String, Int) -> Void) async throws -> LocalChatResult {
         switch provider {
@@ -16,7 +17,7 @@ enum ChatGenerationService {
             return try await OpenAIChatService.shared.generate(modelID: modelID, messages: messages,
                 configuration: configuration, temperature: temperature ?? 0.6, onUpdate: onUpdate)
         case .openai:
-            let configuration = try OpenAIConfiguration.load(in: preferences)
+            let configuration = try OpenAIConfiguration.load(serviceID: openAIServiceID, in: preferences, readKey: readOpenAIKey)
             return try await OpenAIChatService.shared.generate(modelID: modelID, messages: messages,
                 configuration: configuration, temperature: temperature ?? 0.6, onUpdate: onUpdate)
         case .ollama:

@@ -113,40 +113,41 @@ enum OpenAIEndpointTests {
         var writes = 0
         let state = OpenAISettingsState(preferences: preferences, readKey: { keys[$0] ?? "" }, writeKey: { key, account in keys[account] = key; writes += 1 })
         state.load()
-        precondition(state.apiKey == "official-fixture")
-        state.setBaseURL(custom.absoluteString)
-        precondition(state.apiKey == "custom-fixture")
+        let legacy = state.services[0]
+        precondition(legacy.apiKey == "official-fixture")
+        legacy.setBaseURL(custom.absoluteString)
+        precondition(legacy.apiKey == "custom-fixture")
         try state.apply()
-        precondition(writes == 0 && preferences.string(forKey: "openAIBaseURL") == custom.absoluteString)
-        state.setBaseURL("http://localhost:8080/v1")
-        precondition(state.apiKey.isEmpty)
+        precondition(writes == 0 && (try? OpenAIServices.load(in: preferences).first?.baseURL) == custom.absoluteString)
+        legacy.setBaseURL("http://localhost:8080/v1")
+        precondition(legacy.apiKey.isEmpty)
         try state.apply()
         let anonymous = try OpenAIConfiguration.load(in: preferences, readKey: { keys[$0] ?? "" })
         precondition(anonymous.apiKey.isEmpty && anonymous.baseURL.host == "localhost")
-        state.apiKey = "unsaved-fixture"
-        state.setBaseURL(custom.absoluteString)
-        precondition(state.apiKey == "custom-fixture", "Unsaved key must not move to another endpoint")
-        state.apiKey = " updated-fixture "
+        legacy.apiKey = "unsaved-fixture"
+        legacy.setBaseURL(custom.absoluteString)
+        precondition(legacy.apiKey == "custom-fixture", "Unsaved key must not move to another endpoint")
+        legacy.apiKey = " updated-fixture "
         try state.apply()
         precondition(keys[account] == "updated-fixture" && keys[official] == "official-fixture" && writes == 1)
-        state.setBaseURL(credentialURL)
-        precondition(state.apiKey.isEmpty)
+        legacy.setBaseURL(credentialURL)
+        precondition(legacy.apiKey.isEmpty)
         do { try state.apply(); preconditionFailure("Invalid draft saved") } catch { }
-        precondition(preferences.string(forKey: "openAIBaseURL") == custom.absoluteString && writes == 1)
-        state.setBaseURL("")
-        precondition(state.apiKey == "official-fixture")
+        precondition((try? OpenAIServices.load(in: preferences).first?.baseURL) == custom.absoluteString && writes == 1)
+        legacy.setBaseURL("")
+        precondition(legacy.apiKey == "official-fixture")
         try state.apply()
-        precondition(preferences.string(forKey: "openAIBaseURL") == OpenAIConfiguration.officialBaseURL.absoluteString)
+        precondition((try? OpenAIServices.load(in: preferences).first?.baseURL) == OpenAIConfiguration.officialBaseURL.absoluteString)
         let failing = OpenAISettingsState(preferences: preferences, readKey: { _ in throw OpenAIError.message("fixture Keychain failure") }, writeKey: { _, _ in writes += 1 })
         failing.load()
         do { try failing.apply(); preconditionFailure("Failed key read silently enabled") } catch { }
-        preferences.set(false, forKey: "openAIEnabled")
+        failing.services[0].profile.enabled = false
         try failing.apply()
         precondition(writes == 1, "Failed read deleted an untouched key")
-        preferences.set(true, forKey: "openAIEnabled")
-        failing.apiKey = "replacement-fixture"
+        failing.services[0].profile.enabled = true
+        failing.services[0].apiKey = "replacement-fixture"
         try failing.apply()
-        precondition(writes == 2 && failing.keyLoadError == nil)
+        precondition(writes == 2 && failing.services[0].keyLoadError == nil)
         print("PASS: Base URL validation/canonicalization, draft-only persistence, scoped Keychain accounts, endpoint switching and failed-read safety")
     }
 
@@ -182,6 +183,32 @@ enum OpenAIEndpointTests {
             precondition(request.headers["authorization"] == (request.path.contains("anonymous") ? nil : "Bearer fixture-key"))
         }
         print("PASS: real loopback HTTP, custom path prefix, models, Responses/Chat streaming and usage, with/without Bearer auth (synthetic output)")
+        let suite = "Synomancer.ServiceHTTPTest." + UUID().uuidString
+        let preferences = UserDefaults(suiteName: suite)!
+        defer { preferences.removePersistentDomain(forName: suite) }
+        let rawModel = "vendor/model:revision"
+        let a = OpenAIService(name: "Fixture A", baseURL: server.baseURL.absoluteString, models: rawModel, enabled: true)
+        let b = OpenAIService(name: "Fixture B", baseURL: destination.baseURL.absoluteString, models: rawModel, enabled: true, useResponses: false)
+        try OpenAIServices.save([a, b], in: preferences)
+        let aKey = "service-a-fixture-key", bKey = "service-b-fixture-key"
+        let keys = [OpenAIConfiguration.keychainAccount(serviceID: a.id, baseURL: server.baseURL): aKey,
+                    OpenAIConfiguration.keychainAccount(serviceID: b.id, baseURL: destination.baseURL): bKey]
+        for (service, fixture, key) in [(a, server, aKey), (b, destination, bKey)] {
+            let config = try OpenAIConfiguration.load(serviceID: service.id, in: preferences, readKey: { keys[$0] ?? "" })
+            _ = try await client.models(configuration: config)
+            precondition(fixture.requests.last!.headers["authorization"] == "Bearer " + key)
+            let result = try await ChatGenerationService.generate(modelID: rawModel, provider: .openai,
+                messages: history, preferences: preferences, openAIServiceID: service.id,
+                readOpenAIKey: { keys[$0] ?? "" }) { _, _ in }
+            precondition(result.text == "loopback 回复" && result.completionTokens == 3)
+            let request = fixture.requests.last!
+            precondition(request.headers["authorization"] == "Bearer " + key)
+            precondition(request.path.hasSuffix(service.useResponses ? "/responses" : "/chat/completions"))
+            let body = try JSONSerialization.jsonObject(with: request.body) as! [String: Any]
+            precondition(body["model"] as? String == rawModel)
+        }
+        print("PASS: production router sends identical raw model IDs to two loopback services with their own keys and API modes")
+        let destinationCount = destination.requests.count
         server.redirectURL = destination.baseURL
         let initialCount = server.requests.count
         for status in [301, 302, 303, 307, 308] {
@@ -201,9 +228,9 @@ enum OpenAIEndpointTests {
                 }
             }
         }
-        print("Redirect source requests: \(server.requests.count - initialCount); destination requests: \(destination.requests.count)")
+        print("Redirect source requests: \(server.requests.count - initialCount); destination requests: \(destination.requests.count - destinationCount)")
         precondition(server.requests.count == initialCount + 15)
-        precondition(destination.requests.isEmpty, "Redirect destination received credentials or conversation")
+        precondition(destination.requests.count == destinationCount, "Redirect destination received credentials or conversation")
         print("PASS: 301/302/303/307/308 redirects blocked for models, Responses and Chat; destination received zero requests")
     }
 }

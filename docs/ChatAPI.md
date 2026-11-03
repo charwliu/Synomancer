@@ -5,33 +5,45 @@
 
 ## App 调用 OpenAI 及兼容接口
 
-设置 → **OpenAI**：
+设置 → **OpenAI-compatible Services** 支持同时保存多个服务，每项独立设置：
 
-1. 开启 **Enable OpenAI models**。
+1. 选择已有服务，或用 **Add Service** 新增；填写互不重复的 **Service name**，
+   开启 **Enable this service**。同一服务的名称、地址、密钥、模型和 API 模式均独立保存。
 2. **Base URL** 默认是 `https://api.openai.com/v1`，留空也使用官方地址。
-   使用兼容服务时填入该服务的 API 根地址，例如 `https://api.example.com/proxy/v1`
+   兼容服务填入自己的 API 根地址，例如 `https://api.example.com/proxy/v1`
    或 `http://127.0.0.1:8080/v1`；保留服务要求的路径前缀，不填 `/responses`、
-   `/chat/completions` 或 `/models` 后缀，App 会自动追加对应路径，不会自动添加 `/v1`。
+   `/chat/completions` 或 `/models` 后缀，App 不会自动添加 `/v1`。
 3. 官方接口从 [OpenAI Platform](https://platform.openai.com/api-keys) 获取密钥；
    兼容服务填写该服务自己的 API Key，无需认证的服务可以留空。
-4. 在 **Model IDs** 中每行填写一个模型 ID，或点击 **Choose API Models…** 从所选端点获取列表。
-   列表可能包含非聊天模型，请选择支持文本生成及所选 API 模式的模型。
-5. 默认启用 **Use Responses API**；只支持 Chat Completions 的兼容服务需关闭此选项。
-6. 点击 **Apply OpenAI Settings**（或设置页的 Save），在聊天模型菜单选择 `OpenAI · 模型ID`。
-   兼容服务仍归入 OpenAI 提供方；切换端点后应重新选择该服务可用的模型 ID。
+4. 在 **Model IDs** 中每行填写一个模型 ID，或点击 **Choose API Models…** 从当前服务获取列表。
+   请选择支持文本生成及所选 API 模式的模型。选择器中的 **Done** 返回设置，选择仍为草稿。
+5. 默认启用 **Use Responses API**；只支持 Chat Completions 的服务关闭此选项。
+   **Send temperature parameter** 也按服务独立设置，默认关闭。
+6. 点击 **Apply OpenAI Services**（或设置页的 Save）保存全部草稿。
+   聊天模型菜单显示 `服务名称 · 模型ID`；不同服务可以配置相同模型 ID，路由不会混淆。
+   **Choose API Models…** 使用当前服务草稿中的地址与密钥读取列表，不会顺带应用其他配置。
 
-模型列表和生成请求使用同一 Base URL。远程地址要求 HTTPS；仅 `localhost`、
+模型列表和生成请求使用同一服务的 Base URL。远程地址要求 HTTPS；仅 `localhost`、
 IPv4 `127/8` 和 IPv6 `::1` loopback 服务允许 HTTP。地址不能包含用户名、密码、
-查询参数或片段；未通过校验的草稿不会写入偏好设置。服务必须提供最终 API 根地址：
-模型列表和生成请求均不跟随 HTTP 重定向，避免把认证或聊天内容转发到其他目的地。
+查询参数或片段；任何服务的无效草稿都会阻止应用，不会写入偏好设置或改动密钥。
+服务必须提供最终 API 根地址：请求不跟随 HTTP 重定向，避免转发认证或聊天内容。
 
-API Key 仅保存在 Keychain，不写入 UserDefaults、聊天数据库或源码。
-官方地址沿用独立的 `openai` 项，兼容服务按规范化的完整 Base URL（含端口及路径）隔离密钥。
-切换地址立即清空当前密钥框并读取目标端点的已存密钥，不自动沿用官方或其他端点的密钥；
-同一地址的大小写域名、默认端口和尾部斜杠会规范化。空密钥的兼容请求不发送 Authorization。
-仅向可信服务发送密钥和会话内容；服务器错误消息中的完整当前密钥会被脱敏。
-OpenAI 和 Gemini 可同时启用，即使原始模型 ID 相同，也使用各自的命名空间和提供方。
-关闭某提供方后，其请求会明确报错；旧会话保留，可在重新启用后选择对应模型继续。
+API Key 仅保存在 Keychain，不写入 UserDefaults、聊天数据库、导出会话或源码。
+每个新服务的密钥按固定服务 ID 和规范化 Base URL（含端口及路径）隔离：
+即使两个服务使用同一地址，也不会共享密钥。切换地址立即清空当前密钥框，
+只读取该服务在目标地址的已存密钥；域名大小写、默认端口和尾部斜杠会规范化。
+无密钥的兼容请求不发送 Authorization，服务器错误消息中的完整当前密钥会被脱敏。
+读取密钥失败时，不会因未修改的空输入框删除原密钥。
+
+旧单服务配置在首次成功保存时迁移为 **OpenAI**，沿用原来官方地址的 `openai`
+或自定义端点的 Keychain 项，保留 API 模式、模型列表、选中模型及旧会话身份。
+服务改名不会改变模型身份；更换同一服务的 Base URL 后，该服务的会话使用新地址。
+若要同时保留两个目的地，应新增独立服务。
+**Remove Service** 后应用设置会移除该服务的配置及其所有端点密钥，保留历史会话。
+停用或删除服务后，其旧会话请求明确报错，不会自动发送给其他服务。
+全部服务都可删除；新增服务不会接管旧会话。
+
+OpenAI 兼容服务、本地模型与 Gemini 可同时使用。旧会话仍保留其提供方和服务身份。
 
 主聊天和快捷补全均支持多轮文本、流式回答、最终用量和取消。
 Responses 请求使用 `store: false` 并携带本地消息历史；达到输出上限时保留部分回答、
@@ -150,10 +162,12 @@ OpenAI 回归验证官方默认地址、Responses 默认值、Chat Completions �
 端点切换与密钥隔离、Keychain 读取失败时不删除原密钥、无效草稿不落盘和错误密钥脱敏。
 真实 loopback HTTP 夹具覆盖自定义路径下的模型列表、两种流式协议、最终用量、
 有/无 Bearer 认证，并验证 301/302/303/307/308 重定向的目标收到零请求。
+多服务回归检查旧配置迁移、重载、同地址不同密钥、同名模型、服务改名和停用/删除后不回退；
+两台 loopback HTTP 服务使用不同密钥和 API 模式，验证生产路由发送原始模型 ID 到正确端点。
 这些远程协议检查使用 HTTP 夹具；真实账户调用需在 App 设置中配置各自的 API Key 后验证。
 仅运行协议测试可使用 `--remote-api-only`，需要 loopback 网络权限，无需本地权重或个人密钥。
 `--remote-store-only --cache <HF缓存>` 独立验证 OpenAI / Gemini 模型选择和旧会话保留，
-只扫描缓存，不加载权重推理。
+只扫描缓存，不加载权重推理；还验证服务名称显示、同名模型身份、主聊天/快捷补全路由与删除后的会话保留。
 
 `--chat-store` 使用内存 SwiftData 和独立设置验证旧会话保留、主聊天/快捷补全的真实 MLX 推理、
 停止后重启，以及混合模型列表、远程模型选择和远程调用禁用时不会回退至本地模型。

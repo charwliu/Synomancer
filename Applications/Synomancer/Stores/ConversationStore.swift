@@ -141,6 +141,7 @@ final class ConversationStore {
         let request = UUID()
         let modelID = model.requestModelID
         let provider = model.provider
+        let openAIServiceID = model.openAIServiceID
         requestID = request
         activeMessage = assistant
         receivedTokens = 0
@@ -158,7 +159,7 @@ final class ConversationStore {
                 messages = try swiftDataService.fetchMessages(conversation.id)
                 selectedConversation = conversation
                 conversations = try swiftDataService.fetchConversations()
-                let result = try await ChatGenerationService.generate(modelID: modelID, provider: provider, messages: history, preferences: preferences, onProgress: { [self] label, fraction in
+                let result = try await ChatGenerationService.generate(modelID: modelID, provider: provider, messages: history, preferences: preferences, openAIServiceID: openAIServiceID, onProgress: { [self] label, fraction in
                     Task { @MainActor in
                         guard self.requestID == request, self.receivedTokens == 0 else { return }
                         self.loadingProgress = (label, fraction)

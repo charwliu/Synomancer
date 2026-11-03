@@ -14,7 +14,7 @@
   模型兼容性以[聊天文档](docs/LocalChat.md)和[模型库说明](docs/MLXModelLibrary.md)为准。
 - FLUX / Qwen 图像生成与编辑，Qwen3-ASR 和 Qwen3-TTS 本地语音管线。
 - 原生 Hugging Face 模型下载，支持续传、分片校验及共享 HF 缓存。
-- 可选 OpenAI / Gemini 文本聊天，支持自定义 Base URL 接入 OpenAI 兼容服务，以及仅绑定 loopback、需要访问令牌的本地模型 API。
+- 可选 OpenAI / Gemini 文本聊天，支持同时配置多个具名 OpenAI 兼容服务（独立 Base URL、API Key、模型列表），以及仅绑定 loopback、需要访问令牌的本地模型 API。
 
 不同模型需要不同的内存容量、权重格式和访问权限；下载完成不代表该架构已受支持。
 仓库不包含模型权重、个人配置、访问凭证、录音或验收日志。
@@ -105,9 +105,11 @@ xcodebuild -project Synomancer.xcodeproj -scheme Synomancer-Release \
 2. 下载兼容模型，或选择已有的完整 HF 缓存，刷新模型列表后选择模型。
 3. 在设置中启用 OpenAI 或 Gemini，输入各自的 API Key，并选择账户可用的文本模型。
    两者密钥分别保存在 Keychain；OpenAI 默认使用 Responses，也可切换 Chat Completions。
-   OpenAI 的 Base URL 可改为兼容服务的 API 根地址（含所需的 `/v1` 等路径前缀）；
-   远程端点要求 HTTPS，本地 loopback 可用 HTTP，无需认证的服务可留空密钥。
-   密钥按端点隔离，切换地址不会自动沿用原密钥；模型列表和生成请求均不跟随重定向。
+   OpenAI-compatible Services 可同时配置多个服务，聊天菜单按 `服务名称 · 模型ID` 区分。
+   每个服务独立保存 Base URL、API Key、模型列表和 API 模式；同名模型或相同地址也不共享密钥。
+   Base URL 填 API 根地址（含所需 `/v1` 等路径前缀）；远程端点要求 HTTPS，
+   本地 loopback 可用 HTTP，无需认证可留空密钥。切换地址不沿用其他目的地的密钥，请求不跟随重定向。
+   原单服务配置会迁移并保留已有会话；停用或删除服务后不会自动改投其他服务。
    HF Token 仅供本次下载使用。
    不要将凭证写进代码、配置示例、日志或提交信息。
 
