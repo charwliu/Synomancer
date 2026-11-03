@@ -101,6 +101,46 @@ enum OpenAIServiceTests {
         precondition(invalid.loadError != nil && invalid.add() == nil)
         do { try invalid.apply(); preconditionFailure("Corrupt registry replaced") } catch { }
         precondition(preferences.data(forKey: OpenAIServices.preferencesKey) == corrupt)
+        try deferredURLTests()
         print("PASS: multi-service migration/reload, same-URL independent keys, renames, invalid/duplicate drafts, disable/remove without fallback, no credentials in preferences")
     }
+
+    private static func deferredURLTests() throws {
+        let originalURL = "https://first.fixture.invalid/v1"
+        let destinationURL = "https://second.fixture.invalid/v1"
+        let profile = OpenAIService(name: "Editing fixture", baseURL: originalURL, enabled: true)
+        let original = OpenAIConfiguration.keychainAccount(serviceID: profile.id, baseURL: try OpenAIConfiguration.normalizedBaseURL(originalURL))
+        let destination = OpenAIConfiguration.keychainAccount(serviceID: profile.id, baseURL: try OpenAIConfiguration.normalizedBaseURL(destinationURL))
+        var reads = 0, writes = 0
+        let editor = OpenAIServiceSettingsState(profile: profile, readKey: { account in
+            reads += 1
+            return account == original ? "first-fixture-key" : account == destination ? "second-fixture-key" : ""
+        }, writeKey: { _, _ in writes += 1 })
+        precondition(reads == 1 && editor.apiKey == "first-fixture-key")
+        for partial in ["h", "https://s", "https://second.fixture.invalid", destinationURL] {
+            editor.editBaseURL(partial)
+            precondition(editor.apiKey.isEmpty && reads == 1 && writes == 0)
+        }
+        precondition(editor.profile.baseURL == destinationURL)
+        editor.finishBaseURLEditing()
+        precondition(reads == 2 && editor.apiKey == "second-fixture-key")
+        editor.finishBaseURLEditing()
+        precondition(reads == 2)
+        editor.editBaseURL(originalURL)
+        editor.apiKey = "new-fixture-key"
+        editor.finishBaseURLEditing()
+        precondition(reads == 2 && editor.apiKey == "new-fixture-key")
+        try editor.validateKey()
+        try editor.saveKey()
+        precondition(writes == 1)
+        editor.editBaseURL(destinationURL)
+        try editor.validateKey() // Save/fetch must finish editing even if focus did not change.
+        precondition(reads == 3 && editor.apiKey == "second-fixture-key")
+        editor.editBaseURL("https://second.fixture.invalid/v1?token=fixture-value")
+        editor.finishBaseURLEditing()
+        do { try editor.validateKey(); preconditionFailure("Invalid URL accepted") } catch { }
+        precondition(reads == 3 && writes == 1 && editor.apiKey.isEmpty)
+        print("PASS: Base URL typing preserves drafts, clears the old key without Keychain reads, loads once on blur/save and preserves a newly entered destination key")
+    }
+
 }

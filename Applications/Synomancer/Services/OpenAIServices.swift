@@ -93,6 +93,7 @@ final class OpenAIServiceSettingsState: Identifiable {
     @ObservationIgnored private let writeKey: (String, String) throws -> Void
     @ObservationIgnored private var keyEndpoint: URL?
     @ObservationIgnored private var originalKey: String?
+    @ObservationIgnored private var needsKeyLoad = false
 
     init(profile: OpenAIService, readKey: @escaping (String) throws -> String,
          writeKey: @escaping (String, String) throws -> Void) {
@@ -104,6 +105,12 @@ final class OpenAIServiceSettingsState: Identifiable {
     }
 
     func setBaseURL(_ text: String) {
+        editBaseURL(text)
+        finishBaseURLEditing()
+    }
+
+    // Keystrokes clear the old key immediately but never block on Keychain I/O.
+    func editBaseURL(_ text: String) {
         profile.baseURL = text
         let endpoint = try? OpenAIConfiguration.normalizedBaseURL(text)
         guard endpoint != keyEndpoint || endpoint == nil else { return }
@@ -111,7 +118,15 @@ final class OpenAIServiceSettingsState: Identifiable {
         originalKey = nil
         keyLoadError = nil
         keyEndpoint = endpoint
-        guard let endpoint else { return }
+        needsKeyLoad = endpoint != nil
+    }
+
+    func finishBaseURLEditing() {
+        guard needsKeyLoad, let endpoint = keyEndpoint,
+              (try? OpenAIConfiguration.normalizedBaseURL(profile.baseURL)) == endpoint else { return }
+        needsKeyLoad = false
+        // A newly entered key belongs to this destination; do not replace it on blur.
+        guard apiKey.isEmpty else { return }
         do {
             let stored = try readKey(OpenAIConfiguration.keychainAccount(serviceID: id, baseURL: endpoint))
             apiKey = stored
@@ -122,6 +137,7 @@ final class OpenAIServiceSettingsState: Identifiable {
     }
 
     func validateKey() throws {
+        finishBaseURLEditing()
         let endpoint = try OpenAIConfiguration.normalizedBaseURL(profile.baseURL)
         guard profile.id == id, keyEndpoint == endpoint else { throw OpenAIError.message("Reload the service settings before saving.") }
         if profile.enabled {

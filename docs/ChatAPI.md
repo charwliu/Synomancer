@@ -5,7 +5,7 @@
 
 ## App 调用 OpenAI 及兼容接口
 
-设置 → **OpenAI-compatible Services** 支持同时保存多个服务，每项独立设置：
+设置 → **OpenAI** 标签 → **OpenAI-compatible Services** 支持同时保存多个服务，每项独立设置。服务名称、Base URL 和密钥使用独立的带边框输入框；全局保存失败时，原因会显示在设置窗口顶部：
 
 1. 选择已有服务，或用 **Add Service** 新增；填写互不重复的 **Service name**，
    开启 **Enable this service**。同一服务的名称、地址、密钥、模型和 API 模式均独立保存。
@@ -30,8 +30,9 @@ IPv4 `127/8` 和 IPv6 `::1` loopback 服务允许 HTTP。地址不能包含用�
 
 API Key 仅保存在 Keychain，不写入 UserDefaults、聊天数据库、导出会话或源码。
 每个新服务的密钥按固定服务 ID 和规范化 Base URL（含端口及路径）隔离：
-即使两个服务使用同一地址，也不会共享密钥。切换地址立即清空当前密钥框，
-只读取该服务在目标地址的已存密钥；域名大小写、默认端口和尾部斜杠会规范化。
+即使两个服务使用同一地址，也不会共享密钥。切换地址立即清空当前密钥框；
+离开地址框、按回车或应用设置时，才读取该服务在目标地址的已存密钥，避免每次按键访问 Keychain。
+若已为目标地址输入新密钥，读取过程不会覆盖该输入；域名大小写、默认端口和尾部斜杠会规范化。
 无密钥的兼容请求不发送 Authorization，服务器错误消息中的完整当前密钥会被脱敏。
 读取密钥失败时，不会因未修改的空输入框删除原密钥。
 
@@ -56,7 +57,7 @@ Responses 请求使用 `store: false` 并携带本地消息历史；达到输出
 
 ## App 调用 Google Gemini
 
-设置 → **Gemini**：
+设置 → **Gemini** 标签：
 
 1. 开启 **Enable Gemini models**。
 2. 从 [Google AI Studio](https://aistudio.google.com/apikey) 获取 API Key，填入密钥框。
@@ -80,7 +81,7 @@ Gemini 内部模型 ID 带 `gemini:` 前缀，请求中发送原始模型 ID。
 
 ## 向其他程序提供本地模型 API
 
-设置 → **Local MLX API**：
+设置 → **Local API** 标签 → **Local MLX API**：
 
 1. 选择端口，默认 `8080`。
 2. 生成或填写 **Local API Access Token**；这是本地服务的密钥，与 Gemini API Key 独立。
@@ -180,3 +181,24 @@ OpenAI 回归验证官方默认地址、Responses 默认值、Chat Completions �
 **Use Local Qwen MTP** 时自动使用本地 MTP sidecar。其他温度保持普通采样；
 缺失 sidecar 时使用主模型，最终 `usage` 使用真实生成 token 数。
 详细格式与限制见 [MLXModelLibrary.md](MLXModelLibrary.md)。
+
+## 人工验证设置与真实兼容服务
+
+以下步骤由使用者在 App 中操作；合成 HTTP 回归不等同于真实服务通过。
+
+1. 退出并重新打开新构建。设置应有 General、Models、OpenAI、Gemini、Speech、Local API 六页；
+   各页可独立滚动，Cancel / Save 固定在顶部。
+2. 在 OpenAI 页配置服务 A，再用 Add Service 配置服务 B。为两者设置不同名称、
+   各自的 Base URL 和 API Key，并添加同一个真实可用的文本模型 ID。
+   Base URL 填 API 根地址，不带 `/responses` 或 `/chat/completions`；仅支持 Chat Completions 的服务关闭 Use Responses API。
+3. 确认名称和地址可以全选替换、粘贴和逐字修改，API Key 显示为掩码。切到其他页再回来，
+   草稿应保留。保存并重新打开设置，服务及各自参数应恢复；错误原因应在窗口中显示。
+4. 在聊天模型菜单分别选择 `A · 同名模型`、`B · 同名模型`，各新建会话。
+   先要求“记住代码 PINE-472，并从 1 数到 40”，确认文字逐步出现；
+   再问“上轮的代码是什么？只回复代码”，应得到 PINE-472。
+5. 对需要认证的服务，若可恢复原密钥，可将 B 的密钥临时替换成无效测试串并应用：
+   应只有 B 认证失败，A 仍能推理；随后恢复 B 并确认成功。不要将 A 的真实密钥发送给 B。
+6. 改动 A 的 Base URL 时，旧地址密钥应立即清空，不应带到新目的地。
+   使用 Cancel 放弃此草稿，再打开应恢复原设置。不要将未知测试地址应用到真实会话。
+7. 停用 B 并应用，B 的旧会话应明确报错，A 继续正常；重新启用 B 后恢复。
+   反馈结果时只需说明服务代号、模型和失败步骤，不要提供密钥或含凭证的日志。

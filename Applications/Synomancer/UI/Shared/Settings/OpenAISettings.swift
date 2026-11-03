@@ -54,18 +54,39 @@ private struct OpenAIServiceEditor: View {
     @State private var fetching = false
     @State private var availableIDs: [String] = []
     @State private var showModels = false
+    @FocusState private var baseURLFocused: Bool
 
     var body: some View {
         Group {
-            TextField("Service name", text: $editor.profile.name).autocorrectionDisabled()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Service name").font(.caption).foregroundStyle(.secondary)
+                TextField("Service name", text: $editor.profile.name)
+                    .labelsHidden().textFieldStyle(.roundedBorder).autocorrectionDisabled()
+                    .accessibilityLabel("Service name").frame(maxWidth: .infinity)
+            }
             Toggle("Enable this service", isOn: $editor.profile.enabled)
             Text("Selecting a model sends conversation text and this service’s key to its configured endpoint. Only use services you trust.")
                 .font(.caption).foregroundStyle(.secondary)
-            TextField("Base URL", text: Binding(get: { editor.profile.baseURL }, set: { editor.setBaseURL($0) }))
-                .autocorrectionDisabled()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Base URL").font(.caption).foregroundStyle(.secondary)
+                TextField("https://api.openai.com/v1", text: Binding(get: { editor.profile.baseURL }, set: { editor.editBaseURL($0) }))
+                    .labelsHidden().textFieldStyle(.roundedBorder).autocorrectionDisabled()
+                    .accessibilityLabel("Base URL").frame(maxWidth: .infinity)
+                    .focused($baseURLFocused)
+                    .onSubmit { editor.finishBaseURLEditing(); baseURLFocused = false }
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+            }
             Text("Default: https://api.openai.com/v1. Include the API path prefix (such as /v1), without /responses or /chat/completions. Remote APIs require HTTPS; loopback servers may use HTTP. Requests do not follow redirects.")
                 .font(.caption).foregroundStyle(.secondary)
-            SecureField("API Key (optional for compatible servers)", text: $editor.apiKey).autocorrectionDisabled()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("API Key (optional for compatible servers)").font(.caption).foregroundStyle(.secondary)
+                SecureField("Enter API key", text: $editor.apiKey)
+                    .textFieldStyle(.roundedBorder).autocorrectionDisabled()
+                    .accessibilityLabel("API Key (optional for compatible servers)")
+                    .frame(maxWidth: .infinity)
+            }
             if let error = editor.keyLoadError { Text(error).font(.caption).foregroundStyle(.red) }
             Link("Get an OpenAI API key", destination: URL(string: "https://platform.openai.com/api-keys")!)
             Toggle("Use Responses API", isOn: $editor.profile.useResponses)
@@ -78,6 +99,9 @@ private struct OpenAIServiceEditor: View {
             Button(fetching ? "Loading…" : "Choose API Models…") { fetch() }
                 .disabled(!editor.profile.enabled || fetching)
             if !status.isEmpty { Text(status).font(.caption).foregroundStyle(.secondary) }
+        }
+        .onChange(of: baseURLFocused) { _, focused in
+            if !focused { editor.finishBaseURLEditing() }
         }
         .sheet(isPresented: $showModels) {
             VStack(alignment: .leading, spacing: 12) {

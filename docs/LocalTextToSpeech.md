@@ -1,7 +1,7 @@
 # 本地朗读
 
-设置 → Read Aloud → Speech Model 选择 **Local Qwen3-TTS 1.7B**。
-缓存使用设置 → Hugging Face → **HF_HOME**，与 ASR 共用，默认
+设置 → Speech → Read Aloud → Speech Model 选择 **Local Qwen3-TTS 1.7B**。
+缓存使用设置 → Models → Hugging Face → **HF_HOME**，与 ASR 共用，默认
 `~/.cache/huggingface/hub`。首次需要通过 **Choose HF_HOME Folder…**
 授权外部目录；若已授权同一目录，无需重选。
 若首次朗读/录音无法读取 HF_HOME，macOS 会弹出授权文件夹选择器，选择缓存根目录
@@ -13,7 +13,7 @@ Automatic 语言根据文字选择中文或英文；自动音色分别使用 Viv
 
 ## 自动朗读模式
 
-聊天工具栏的 **自动朗读** 开关，或设置 → Read Aloud → **自动朗读**，
+聊天工具栏的 **自动朗读** 开关，或设置 → Speech → Read Aloud → **自动朗读**，
 开启后会在新回答完成并保存后自动朗读正式答案，沿用所选 Speech Model、
 语言和音色。开关默认关闭，选择会保留到下次启动。
 思考段不朗读；打开旧会话、取消生成、失败的响应及快捷补全不会自动播放。

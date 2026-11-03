@@ -17,8 +17,12 @@ struct GeminiSettings: View {
             Text("Selecting a Gemini model sends conversation text to Google Gemini. Local MLX remains available.")
                 .font(.caption).foregroundStyle(.secondary)
             Link("Get a Gemini API key", destination: URL(string: "https://aistudio.google.com/apikey")!)
-            SecureField("API Key", text: $apiKey)
-                .autocorrectionDisabled()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("API Key").font(.caption).foregroundStyle(.secondary)
+                SecureField("Enter API key", text: $apiKey)
+                    .textFieldStyle(.roundedBorder).autocorrectionDisabled()
+                    .accessibilityLabel("API Key").frame(maxWidth: .infinity)
+            }
             Toggle("Send temperature parameter", isOn: $sendTemperature)
             Text("Keep temperature disabled for models that do not support it.")
                 .font(.caption).foregroundStyle(.secondary)

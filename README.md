@@ -100,10 +100,12 @@ xcodebuild -project Synomancer.xcodeproj -scheme Synomancer-Release \
 
 ## 初次使用
 
-1. 在设置 → Hugging Face 中选择 **HF_HOME** 并授权访问。
+设置按 General、Models、OpenAI、Gemini、Speech 和 Local API 六个标签分组。
+
+1. 在设置 → Models → Hugging Face 中选择 **HF_HOME** 并授权访问。
    未配置时使用当前用户主目录下的 `.cache/huggingface/hub`；可自行选择其他磁盘。
 2. 下载兼容模型，或选择已有的完整 HF 缓存，刷新模型列表后选择模型。
-3. 在设置中启用 OpenAI 或 Gemini，输入各自的 API Key，并选择账户可用的文本模型。
+3. 在设置的 OpenAI 或 Gemini 标签中启用服务，输入各自的 API Key，并选择账户可用的文本模型。
    两者密钥分别保存在 Keychain；OpenAI 默认使用 Responses，也可切换 Chat Completions。
    OpenAI-compatible Services 可同时配置多个服务，聊天菜单按 `服务名称 · 模型ID` 区分。
    每个服务独立保存 Base URL、API Key、模型列表和 API 模式；同名模型或相同地址也不共享密钥。

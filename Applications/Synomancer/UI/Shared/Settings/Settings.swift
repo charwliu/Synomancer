@@ -30,8 +30,10 @@ struct Settings: View {
     @State private var geminiKey = ""
     @State private var originalGeminiKey: String?
     @State private var openAISettings = OpenAISettingsState()
+    @State private var saveError: String?
 
     private func save() {
+        saveError = nil
         do {
             // A failed Keychain read must not turn an untouched empty field into deletion.
             try openAISettings.apply()
@@ -40,6 +42,7 @@ struct Settings: View {
             }
             if UserDefaults.standard.bool(forKey: "geminiEnabled") { _ = try GeminiConfiguration.load() }
         } catch {
+            saveError = error.localizedDescription
             AppStore.shared.uiLog(message: error.localizedDescription, status: .error)
             return
         }
@@ -79,9 +82,14 @@ struct Settings: View {
             refreshModels: refreshModels,
             deleteAll: deleteAll,
             localModels: languageModelStore.models,
-            voices: speechSynthesiser.voices
+            voices: speechSynthesiser.voices,
+            saveError: saveError
         )
+        #if os(macOS)
+        .frame(minWidth: 640, idealWidth: 760, maxWidth: 900, minHeight: 620, idealHeight: 760)
+        #else
         .frame(maxWidth: 700)
+        #endif
         .task {
             openAISettings.load()
             do {

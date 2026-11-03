@@ -15,7 +15,7 @@ Synomancer 使用 Swift + MLX 运行 Qwen3-ASR 1.7B。
 
 ## 使用已有 Hugging Face 缓存
 
-设置中的 **Hugging Face → HF_HOME** 是聊天/ASR/TTS 共用的唯一缓存设置，
+设置中的 **Models → Hugging Face → HF_HOME** 是聊天/ASR/TTS 共用的唯一缓存设置，
 默认 `~/.cache/huggingface/hub`。通过 **Choose HF_HOME Folder…** 可以选择
 `huggingface`、`hub`、模型仓库目录或可独立读取的模型目录。
 macOS 建议选择 `hub` 根目录：snapshot 中的权重通常通过符号链接指向
