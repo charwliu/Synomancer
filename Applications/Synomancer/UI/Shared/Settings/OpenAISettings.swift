@@ -6,7 +6,7 @@ struct OpenAISettings: View {
     @AppStorage("openAIModels") private var modelIDs = ""
     @AppStorage("openAIUseResponses") private var useResponses = true
     @AppStorage("openAISendTemperature") private var sendTemperature = false
-    @Binding var apiKey: String
+    @Bindable var state: OpenAISettingsState
     @State private var status = ""
     @State private var fetching = false
     @State private var availableIDs: [String] = []
@@ -15,12 +15,17 @@ struct OpenAISettings: View {
     var body: some View {
         Section("OpenAI") {
             Toggle("Enable OpenAI models", isOn: $enabled)
-            Text("Selecting an OpenAI model sends conversation text to OpenAI. Local MLX and Gemini remain available.")
+            Text("Selecting an OpenAI model sends conversation text and the endpoint key to the configured service.")
                 .font(.caption).foregroundStyle(.secondary)
             Link("Get an OpenAI API key", destination: URL(string: "https://platform.openai.com/api-keys")!)
-            SecureField("OpenAI API Key", text: $apiKey).autocorrectionDisabled()
+            TextField("Base URL", text: Binding(get: { state.baseURLText }, set: { state.setBaseURL($0) }))
+                .autocorrectionDisabled()
+            Text("Default: https://api.openai.com/v1. Include the API path prefix (such as /v1), without /responses or /chat/completions. Remote APIs require HTTPS; loopback servers may use HTTP.")
+                .font(.caption).foregroundStyle(.secondary)
+            SecureField("API Key (optional for compatible servers)", text: $state.apiKey).autocorrectionDisabled()
+            if let error = state.keyLoadError { Text(error).font(.caption).foregroundStyle(.red) }
             Toggle("Use Responses API", isOn: $useResponses)
-            Text("Responses is the default. Turn it off for models that require Chat Completions.")
+            Text("Responses is the default. Turn it off for compatible servers or models that require Chat Completions.")
                 .font(.caption).foregroundStyle(.secondary)
             Toggle("Send temperature parameter", isOn: $sendTemperature)
             Text("Keep temperature disabled for models that do not support it.")
@@ -35,7 +40,7 @@ struct OpenAISettings: View {
                     .disabled(!enabled || fetching)
             }
             if !status.isEmpty { Text(status).font(.caption).foregroundStyle(.secondary) }
-            Text("The API key is saved separately in Keychain. Requests use api.openai.com. Choose text models available to your API account and selected API mode.")
+            Text("Keys are saved in Keychain separately for each Base URL. Changing the URL loads that endpoint’s key. Only apply URLs you trust. Requests do not follow redirects. Choose text models supported by the selected API mode.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .sheet(isPresented: $showModels) {
@@ -66,8 +71,7 @@ struct OpenAISettings: View {
 
     private func apply() {
         do {
-            try ChatSecrets.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: OpenAIConfiguration.keychainAccount)
-            if enabled { _ = try OpenAIConfiguration.load() }
+            try state.apply()
             status = "Settings applied."
             refreshModels()
         } catch { status = error.localizedDescription }
@@ -78,8 +82,11 @@ struct OpenAISettings: View {
         Task {
             defer { fetching = false }
             do {
-                try ChatSecrets.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: OpenAIConfiguration.keychainAccount)
-                availableIDs = try await OpenAIChatService.shared.models(configuration: OpenAIConfiguration.load())
+                try state.apply()
+                let configuration = try OpenAIConfiguration.load()
+                let ids = try await OpenAIChatService.shared.models(configuration: configuration)
+                guard (try? OpenAIConfiguration.normalizedBaseURL(state.baseURLText)) == configuration.baseURL else { return }
+                availableIDs = ids
                 showModels = true
                 status = ""
             } catch { status = error.localizedDescription }

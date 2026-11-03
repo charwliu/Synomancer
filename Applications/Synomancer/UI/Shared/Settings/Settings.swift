@@ -29,20 +29,16 @@ struct Settings: View {
     @State private var cancellable: AnyCancellable?
     @State private var geminiKey = ""
     @State private var originalGeminiKey: String?
-    @State private var openAIKey = ""
-    @State private var originalOpenAIKey: String?
+    @State private var openAISettings = OpenAISettingsState()
 
     private func save() {
         do {
             // A failed Keychain read must not turn an untouched empty field into deletion.
-            if openAIKey != (originalOpenAIKey ?? "") {
-                try ChatSecrets.save(openAIKey.trimmingCharacters(in: .whitespacesAndNewlines), account: OpenAIConfiguration.keychainAccount)
-            }
+            try openAISettings.apply()
             if geminiKey != (originalGeminiKey ?? "") {
                 try ChatSecrets.save(geminiKey.trimmingCharacters(in: .whitespacesAndNewlines), account: GeminiConfiguration.keychainAccount)
             }
             if UserDefaults.standard.bool(forKey: "geminiEnabled") { _ = try GeminiConfiguration.load() }
-            if UserDefaults.standard.bool(forKey: "openAIEnabled") { _ = try OpenAIConfiguration.load() }
         } catch {
             AppStore.shared.uiLog(message: error.localizedDescription, status: .error)
             return
@@ -78,7 +74,7 @@ struct Settings: View {
             appUserInitials: $appUserInitials,
             voiceIdentifier: $voiceIdentifier,
             geminiKey: $geminiKey,
-            openAIKey: $openAIKey,
+            openAISettings: openAISettings,
             save: save,
             refreshModels: refreshModels,
             deleteAll: deleteAll,
@@ -87,12 +83,7 @@ struct Settings: View {
         )
         .frame(maxWidth: 700)
         .task {
-            do {
-                let stored = try ChatSecrets.read(OpenAIConfiguration.keychainAccount)
-                openAIKey = stored
-                originalOpenAIKey = stored
-            }
-            catch { AppStore.shared.uiLog(message: error.localizedDescription, status: .error) }
+            openAISettings.load()
             do {
                 let stored = try ChatSecrets.read(GeminiConfiguration.keychainAccount)
                 geminiKey = stored

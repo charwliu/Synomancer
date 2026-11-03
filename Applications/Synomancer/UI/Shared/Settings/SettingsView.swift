@@ -18,7 +18,7 @@ struct SettingsView: View {
     @Binding var appUserInitials: String
     @Binding var voiceIdentifier: String
     @Binding var geminiKey: String
-    @Binding var openAIKey: String
+    var openAISettings: OpenAISettingsState
     var save: () -> ()
     var refreshModels: () -> ()
     var deleteAll: () -> ()
@@ -75,7 +75,7 @@ struct SettingsView: View {
                 LocalSpeechSettings()
                 LocalTTSSettings()
                 GeminiSettings(refreshModels: refreshModels, apiKey: $geminiKey)
-                OpenAISettings(refreshModels: refreshModels, apiKey: $openAIKey)
+                OpenAISettings(refreshModels: refreshModels, state: openAISettings)
                 LocalChatAPISettings()
                 Section(header: Text("Chat Models").font(.headline)) {
                     
@@ -219,7 +219,7 @@ struct SettingsView: View {
         appUserInitials: .constant("AM"),
         voiceIdentifier: .constant("sample"),
         geminiKey: .constant(""),
-        openAIKey: .constant(""),
+        openAISettings: OpenAISettingsState(),
         save: {},
         refreshModels: {},
         deleteAll: {},

@@ -39,8 +39,17 @@ struct ChatSSEDecoder {
     }
 }
 
+// A redirect must never forward a provider key or conversation to a different destination.
+private final class OpenAINoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
+}
+
 actor OpenAIChatService {
     static let shared = OpenAIChatService()
+    private let redirectDelegate = OpenAINoRedirectDelegate()
     private let session: URLSession
     init(session: URLSession = .shared) { self.session = session }
 
@@ -61,14 +70,13 @@ actor OpenAIChatService {
         }
         // Reasoning models can reject temperature. Only send it when enabled explicitly.
         if configuration.sendTemperature { body["temperature"] = temperature }
-        var request = URLRequest(url: configuration.baseURL.appendingPathComponent(configuration.useResponses ? "responses" : "chat/completions"))
+        var request = try request(configuration: configuration, path: configuration.useResponses ? "responses" : "chat/completions")
         request.httpMethod = "POST"
         request.timeoutInterval = 120
-        request.setValue("Bearer " + configuration.apiKey, forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (bytes, response) = try await session.bytes(for: request)
+        let (bytes, response) = try await session.bytes(for: request, delegate: redirectDelegate)
         guard let http = response as? HTTPURLResponse else { throw OpenAIError.message("Invalid API response.") }
         guard (200..<300).contains(http.statusCode) else {
             var data = Data()
@@ -78,7 +86,7 @@ actor OpenAIChatService {
             }
             let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
             let detail = (json?["error"] as? [String: Any])?["message"] as? String
-            throw OpenAIError.message("API HTTP \(http.statusCode): \(detail ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode))")
+            throw OpenAIError.message("API HTTP \(http.statusCode): \(redacted(detail ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode), configuration: configuration))")
         }
         guard http.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("text/event-stream") == true else {
             throw OpenAIError.message("The API did not return an SSE stream.")
@@ -96,7 +104,7 @@ actor OpenAIChatService {
                 throw OpenAIError.message("Malformed API stream event.")
             }
             if let error = value["error"] as? [String: Any] {
-                throw OpenAIError.message(error["message"] as? String ?? "API stream failed.")
+                throw OpenAIError.message(redacted(error["message"] as? String ?? "API stream failed.", configuration: configuration))
             }
             if configuration.useResponses {
                 let type = value["type"] as? String ?? ""
@@ -111,7 +119,7 @@ actor OpenAIChatService {
                 case "response.failed", "error":
                     let response = value["response"] as? [String: Any]
                     let error = response?["error"] as? [String: Any]
-                    throw OpenAIError.message(error?["message"] as? String ?? value["message"] as? String ?? "API response failed.")
+                    throw OpenAIError.message(redacted(error?["message"] as? String ?? value["message"] as? String ?? "API response failed.", configuration: configuration))
                 case "response.incomplete":
                     let response = value["response"] as? [String: Any]
                     let details = response?["incomplete_details"] as? [String: Any]
@@ -147,14 +155,29 @@ actor OpenAIChatService {
     }
 
     func models(configuration: OpenAIConfiguration) async throws -> [String] {
-        var request = URLRequest(url: configuration.baseURL.appendingPathComponent("models"))
-        request.setValue("Bearer " + configuration.apiKey, forHTTPHeaderField: "Authorization")
+        var request = try request(configuration: configuration, path: "models")
         request.timeoutInterval = 30
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request, delegate: redirectDelegate)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw OpenAIError.message("Could not list API models. Check the endpoint and API key.")
         }
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return ((object?["data"] as? [[String: Any]]) ?? []).compactMap { $0["id"] as? String }.sorted()
     }
+
+    private func request(configuration: OpenAIConfiguration, path: String) throws -> URLRequest {
+        let base = try OpenAIConfiguration.normalizedBaseURL(configuration.baseURL.absoluteString)
+        var request = URLRequest(url: base.appendingPathComponent(path))
+        request.httpShouldHandleCookies = false
+        if !configuration.apiKey.isEmpty {
+            request.setValue("Bearer " + configuration.apiKey, forHTTPHeaderField: "Authorization")
+        }
+        return request
+    }
+
+    private func redacted(_ message: String, configuration: OpenAIConfiguration) -> String {
+        guard !configuration.apiKey.isEmpty else { return message }
+        return message.replacingOccurrences(of: configuration.apiKey, with: "[redacted]")
+    }
+
 }

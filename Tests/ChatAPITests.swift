@@ -29,9 +29,9 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         let payload: String
-        if status != 200 { payload = "{\"error\":{\"message\":\"fixture API failure\"}}" }
+        if status != 200 { payload = "{\"error\":{\"message\":\"fixture API failure fixture-key\"}}" }
         else if path.hasSuffix("models") { payload = "{\"data\":[{\"id\":\"fixture-model\"},{\"id\":\"another-model\"}]}" }
-        else if path.contains("failed") { payload = "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"message\":\"fixture generation failure\"}}}\n\n" }
+        else if path.contains("failed") { payload = "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"message\":\"fixture generation failure fixture-key\"}}}\n\n" }
         else if path.contains("limited") { payload = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\ndata: {\"type\":\"response.incomplete\",\"response\":{\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}}\n\n" }
         else if path.contains("truncated") { payload = "data: {\"choices\":[{\"delta\":{\"content\":\"partial\"},\"finish_reason\":null}]}\n\n" }
         else if path.hasSuffix("responses") {
@@ -56,6 +56,8 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
 struct ChatAPITests {
     static func main() async throws {
         setbuf(stdout, nil)
+        try OpenAIEndpointTests.configurationTests()
+        try await OpenAIEndpointTests.loopbackTests()
         try parserTests()
         try await remoteClientTests()
         if CommandLine.arguments.contains("--remote-only") { return }
@@ -108,15 +110,14 @@ struct ChatAPITests {
         defer { preferences.removePersistentDomain(forName: suite) }
         var keyReads = 0
         do {
-            _ = try OpenAIConfiguration.load(in: preferences, readKey: { keyReads += 1; return "fixture-key" })
+            _ = try OpenAIConfiguration.load(in: preferences, readKey: { _ in keyReads += 1; return "fixture-key" })
             preconditionFailure("Disabled OpenAI accepted")
         } catch { precondition(error.localizedDescription.contains("OpenAI is disabled") && keyReads == 0) }
         do { _ = try OpenAIConfiguration.transport(apiKey: "  "); preconditionFailure("Empty OpenAI key") }
         catch { precondition(error.localizedDescription.contains("OpenAI API key")) }
         preferences.set(true, forKey: "openAIEnabled")
         preferences.set(" fixture-model \nfixture-model\nanother-model\n", forKey: "openAIModels")
-        preferences.set("https://api.fixture.invalid/untrusted", forKey: "openAIBaseURL")
-        let openAI = try OpenAIConfiguration.load(in: preferences, readKey: { " fixture-key " })
+        let openAI = try OpenAIConfiguration.load(in: preferences, readKey: { _ in " fixture-key " })
         precondition(openAI.baseURL.absoluteString == "https://api.openai.com/v1")
         precondition(openAI.apiKey == "fixture-key" && openAI.useResponses && !openAI.sendTemperature)
         precondition(OpenAIConfiguration.keychainAccount == "openai" && OpenAIConfiguration.keychainAccount != GeminiConfiguration.keychainAccount)
@@ -130,7 +131,7 @@ struct ChatAPITests {
         precondition(openAIModels == ["another-model", "fixture-model"])
         preferences.set(false, forKey: "openAIUseResponses")
         preferences.set(true, forKey: "openAISendTemperature")
-        let openAIChat = try OpenAIConfiguration.load(in: preferences, readKey: { "fixture-key" })
+        let openAIChat = try OpenAIConfiguration.load(in: preferences, readKey: { _ in "fixture-key" })
         let openAIChatResult = try await client.generate(modelID: "fixture-model", messages: messages, configuration: openAIChat, temperature: 0.25) { _, _ in }
         precondition(openAIChatResult.text == "hello MLX" && !openAIChat.useResponses)
         precondition((OpenAIFixtureProtocol.body("/v1/chat/completions")["temperature"] as? NSNumber)?.doubleValue == 0.25)
@@ -171,7 +172,10 @@ struct ChatAPITests {
             do {
                 _ = try await client.generate(modelID: "fixture-model", messages: messages, configuration: config(prefix, responses: prefix != "truncated/")) { _, _ in }
                 preconditionFailure("Expected API failure")
-            } catch let error as OpenAIError { precondition(!error.localizedDescription.isEmpty) }
+            } catch let error as OpenAIError {
+                precondition(!error.localizedDescription.isEmpty && !error.localizedDescription.contains("fixture-key"))
+                if prefix != "truncated/" { precondition(error.localizedDescription.contains("[redacted]")) }
+            }
         }
         let slow = Task { try await client.generate(modelID: "fixture-model", messages: messages, configuration: config("slow/")) { _, _ in } }
         try await Task.sleep(for: .milliseconds(100)); slow.cancel()
