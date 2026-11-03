@@ -54,6 +54,35 @@ struct OpenAIConfiguration: Sendable {
     let apiKey: String
     let useResponses: Bool
     let sendTemperature: Bool
+
+    static let officialBaseURL = URL(string: "https://api.openai.com/v1")!
+    static let keychainAccount = "openai"
+
+    static func transport(apiKey: String, useResponses: Bool = true,
+                          sendTemperature: Bool = false) throws -> Self {
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { throw OpenAIError.message("Save an OpenAI API key in Settings.") }
+        return Self(baseURL: officialBaseURL, apiKey: key, useResponses: useResponses,
+                    sendTemperature: sendTemperature)
+    }
+
+    @MainActor static func load(in preferences: UserDefaults = .standard,
+        readKey: () throws -> String = { try ChatSecrets.read(OpenAIConfiguration.keychainAccount) }) throws -> Self {
+        guard preferences.bool(forKey: "openAIEnabled") else {
+            throw OpenAIError.message("OpenAI is disabled in Settings.")
+        }
+        return try transport(apiKey: readKey(),
+            useResponses: preferences.object(forKey: "openAIUseResponses") as? Bool ?? true,
+            sendTemperature: preferences.bool(forKey: "openAISendTemperature"))
+    }
+
+    @MainActor static func modelIDs(in preferences: UserDefaults = .standard) -> [String] {
+        guard preferences.bool(forKey: "openAIEnabled") else { return [] }
+        return Array(Set((preferences.string(forKey: "openAIModels") ?? "")
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty })).sorted()
+    }
 }
 
 enum OpenAIError: LocalizedError {

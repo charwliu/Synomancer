@@ -115,7 +115,13 @@ actor OpenAIChatService {
                 case "response.incomplete":
                     let response = value["response"] as? [String: Any]
                     let details = response?["incomplete_details"] as? [String: Any]
-                    if details?["reason"] as? String == "max_output_tokens" { completed = true; finishReason = "length" }
+                    if details?["reason"] as? String == "max_output_tokens" {
+                        completed = true
+                        finishReason = "length"
+                        let usage = response?["usage"] as? [String: Any]
+                        promptTokens = usage?["input_tokens"] as? Int ?? 0
+                        completionTokens = usage?["output_tokens"] as? Int ?? 0
+                    }
                     else { throw OpenAIError.message("The API response was incomplete.") }
                 default: break
                 }

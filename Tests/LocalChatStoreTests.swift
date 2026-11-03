@@ -125,12 +125,12 @@ struct LocalChatStoreTests {
         let automatic = AutomaticResponseSpeech(preferences: preferences,
             speak: { spoken.append($0) }, stop: {})
         let chat = ConversationStore(swiftDataService: data, preferences: preferences, automaticSpeech: automatic)
-        // Legacy OpenAI rows remain readable but cannot reuse their key or invoke Google.
+        // Disabled OpenAI must fail before reading credentials or invoking another provider.
         do {
             _ = try await ChatGenerationService.generate(modelID: "legacy-model", provider: .openai,
                 messages: [.init(role: "user", content: "fixture")], preferences: preferences) { _, _ in }
-            preconditionFailure("Legacy OpenAI route must be disabled")
-        } catch { precondition(error.localizedDescription.contains("no longer supported")) }
+            preconditionFailure("Disabled OpenAI route accepted")
+        } catch { precondition(error.localizedDescription.contains("OpenAI is disabled")) }
         preferences.set(true, forKey: "geminiEnabled")
         preferences.set("fixture-model\nfixture-model\nsecond-model", forKey: "geminiModels")
         try await models.loadModels()
@@ -146,6 +146,32 @@ struct LocalChatStoreTests {
         try await models.loadModels()
         precondition(models.models.count == 2 && models.models.allSatisfy { $0.provider == .gemini })
         print("PASS: local/remote model lists, namespaced IDs and Gemini selection with missing HF_HOME")
+
+        preferences.set(true, forKey: "openAIEnabled")
+        preferences.set("fixture-model\nlegacy-model\nfixture-model", forKey: "openAIModels")
+        try await models.loadModels()
+        let openAI = models.models.first { $0.name == "openai:fixture-model" }!
+        precondition(models.models.count == 4)
+        precondition(openAI.requestModelID == remote.requestModelID && openAI.provider != remote.provider)
+        precondition(openAI.displayName == "OpenAI · fixture-model" && !openAI.imageSupport)
+        precondition(models.models.contains { $0.name == "openai:legacy-model" })
+        models.setModel(model: openAI)
+        try await models.loadModels()
+        precondition(models.selectedModel?.name == openAI.name && models.selectedModel?.provider == .openai)
+        preferences.set(false, forKey: "geminiEnabled")
+        try await models.loadModels()
+        precondition(models.models.count == 2 && models.models.allSatisfy { $0.provider == .openai })
+        preferences.set(false, forKey: "openAIEnabled")
+        chat.sendPrompt(userPrompt: "Disabled OpenAI fixture", model: openAI)
+        let openAIStart = Date()
+        while chat.conversationState == .loading && Date().timeIntervalSince(openAIStart) < 5 {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        if case .error(let error) = chat.conversationState { precondition(error.contains("OpenAI is disabled")) }
+        else { preconditionFailure("Disabled OpenAI must not fall back to Gemini or MLX") }
+        let savedOpenAI = chat.selectedConversation!
+        precondition(spoken.isEmpty)
+        print("PASS: OpenAI-only discovery without HF_HOME, independent same-name providers, saved selection and disabled route without fallback")
 
         preferences.set(false, forKey: "geminiEnabled")
         chat.selectedConversation = nil; chat.messages = []
@@ -163,6 +189,7 @@ struct LocalChatStoreTests {
         precondition(models.selectedModel?.provider == .mlx)
         let remoteHistory = try data.fetchConversations()
         precondition(remoteHistory.contains { $0.id == savedRemote.id && $0.model?.provider == .gemini })
+        precondition(remoteHistory.contains { $0.id == savedOpenAI.id && $0.model?.provider == .openai })
         print("PASS: provider routing rejects disabled Gemini without MLX fallback; refresh preserves remote conversation")
     }
 

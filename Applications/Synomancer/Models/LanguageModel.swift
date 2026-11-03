@@ -18,6 +18,6 @@ enum ModelProvider: Codable, Sendable {
     // Retained to decode previously saved conversations; no runtime backend.
     case ollama
     case mlx
-    case openai // Legacy saved conversations; no active remote backend.
+    case openai
     case gemini
 }

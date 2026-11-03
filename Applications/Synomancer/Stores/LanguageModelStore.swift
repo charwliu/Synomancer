@@ -46,16 +46,18 @@ final class LanguageModelStore {
         let request = UUID()
         discoveryID = request
         do {
-            let remoteIDs = GeminiConfiguration.modelIDs(in: preferences)
+            let geminiIDs = GeminiConfiguration.modelIDs(in: preferences)
+            let openAIIDs = OpenAIConfiguration.modelIDs(in: preferences)
+            let hasRemoteModels = !geminiIDs.isEmpty || !openAIIDs.isEmpty
             var localModels: [LocalChatModel] = []
             do {
-                let cache = remoteIDs.isEmpty
+                let cache = !hasRemoteModels
                     ? try await SpeechCacheAccess.authorizedConfiguration(in: preferences)
                     : SpeechCacheAccess.configuration(in: preferences)
                 localModels = try await LocalChatService.shared.models(cache: cache)
             } catch {
                 // A remote model remains usable when a removable local cache is absent.
-                if remoteIDs.isEmpty { throw error }
+                if !hasRemoteModels { throw error }
             }
             try Task.checkCancellation()
             guard discoveryID == request else { return }
@@ -69,13 +71,17 @@ final class LanguageModelStore {
                 model.isAvailable = true
                 available.append(model)
             }
-            for id in remoteIDs {
-                let name = "gemini:" + id
-                let model = stored.first(where: { $0.name == name })
-                    ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: .gemini)
-                model.provider = .gemini
-                model.isAvailable = true
-                available.append(model)
+            for (provider, prefix, ids) in [(ModelProvider.gemini, "gemini:", geminiIDs),
+                                            (.openai, "openai:", openAIIDs)] {
+                for id in ids {
+                    let name = prefix + id
+                    let model = stored.first(where: { $0.name == name })
+                        ?? LanguageModelSD(name: name, imageSupport: false, modelProvider: provider)
+                    model.provider = provider
+                    model.imageSupport = false
+                    model.isAvailable = true
+                    available.append(model)
+                }
             }
             // Old provider rows remain attached to their saved conversations.
             // Never delete them during discovery: their relationship cascades.

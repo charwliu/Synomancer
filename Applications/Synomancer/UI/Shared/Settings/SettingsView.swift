@@ -18,6 +18,7 @@ struct SettingsView: View {
     @Binding var appUserInitials: String
     @Binding var voiceIdentifier: String
     @Binding var geminiKey: String
+    @Binding var openAIKey: String
     var save: () -> ()
     var refreshModels: () -> ()
     var deleteAll: () -> ()
@@ -74,6 +75,7 @@ struct SettingsView: View {
                 LocalSpeechSettings()
                 LocalTTSSettings()
                 GeminiSettings(refreshModels: refreshModels, apiKey: $geminiKey)
+                OpenAISettings(refreshModels: refreshModels, apiKey: $openAIKey)
                 LocalChatAPISettings()
                 Section(header: Text("Chat Models").font(.headline)) {
                     
@@ -109,7 +111,7 @@ struct SettingsView: View {
                     }
                     
                     if localModels.isEmpty {
-                        Text("No chat model found. Choose HF_HOME or configure Gemini.")
+                        Text("No chat model found. Choose HF_HOME or configure OpenAI or Gemini.")
                             .foregroundStyle(.secondary)
                     } else {
                         Picker(selection: $defaultModel) {
@@ -217,6 +219,7 @@ struct SettingsView: View {
         appUserInitials: .constant("AM"),
         voiceIdentifier: .constant("sample"),
         geminiKey: .constant(""),
+        openAIKey: .constant(""),
         save: {},
         refreshModels: {},
         deleteAll: {},

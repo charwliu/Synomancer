@@ -1,7 +1,32 @@
-# 本地 MLX API 与 Gemini 模型
+# 本地 MLX API 与 OpenAI / Gemini 模型
 
 默认聊天后端为本地 MLX。模型从聊天、ASR 和 TTS 共用的 HF_HOME 加载，
 不连接 Ollama。切换模型会复用现有会话历史。
+
+## App 调用 OpenAI
+
+设置 → **OpenAI**：
+
+1. 开启 **Enable OpenAI models**。
+2. 从 [OpenAI Platform](https://platform.openai.com/api-keys) 获取 API Key，填入 **OpenAI API Key**。
+3. 在 **Model IDs** 中每行填写一个模型 ID，或点击 **Choose API Models…** 从账户模型列表选择。
+   模型列表包含不同用途的模型，请选择支持文本生成及所选 API 模式的模型。
+4. 默认启用 **Use Responses API**；需要 Chat Completions 时关闭此选项。
+5. 点击 **Apply OpenAI Settings**，在聊天模型菜单选择 `OpenAI · 模型ID`。
+
+请求固定发送到 `https://api.openai.com/v1/responses` 或 `/chat/completions`；
+列表从同一官方端点下的 `/models` 获取。旧的自定义 Base URL 不会用于这个 OpenAI 入口。
+API Key 保存在 Keychain 的独立 `openai` 项，不写入 UserDefaults、聊天数据库或源码。
+OpenAI 和 Gemini 可同时启用，即使原始模型 ID 相同，也使用各自的命名空间和提供方。
+关闭某提供方后，其请求会明确报错；旧会话保留，可在重新启用后选择对应模型继续。
+
+主聊天和快捷补全均支持多轮文本、流式回答、最终用量和取消。
+Responses 请求使用 `store: false` 并携带本地消息历史；达到输出上限时保留部分回答、
+用量和 `length` 结束原因。默认不发送 temperature，按模型兼容性手动开启。
+当前远程入口提供文字对话；图片生成、图片理解和语音使用各自已适配的本地模型功能。
+选择 OpenAI 模型会把会话文本发送给 OpenAI，API 调用由用户的 API 账户计费。
+
+协议依据：[OpenAI Responses 流式接口](https://developers.openai.com/api/docs/guides/streaming-responses)。
 
 ## App 调用 Google Gemini
 
@@ -19,8 +44,8 @@
 模型列表使用同一端点下的 `/models`。默认不发送 temperature，使用模型默认值。
 
 Gemini API Key 存入 Keychain 的独立 `gemini` 项，不写入聊天数据库或 UserDefaults。
-旧 OpenAI 密钥、模型设置不会自动迁移或发送给 Google。旧 OpenAI 会话保留，
-继续聊天时需要选择 Gemini 或本地 MLX 模型；旧提供方请求会明确报错。
+OpenAI 密钥、模型设置不会迁移或发送给 Google。旧 OpenAI 会话保留，
+启用并配置 OpenAI 后可选择对应模型继续；已停用的提供方请求会明确报错。
 Gemini 内部模型 ID 带 `gemini:` 前缀，请求中发送原始模型 ID。
 
 主聊天和 macOS 快捷补全均按所选模型路由。选择 Gemini 后会发送会话文本至 Google；
@@ -49,7 +74,7 @@ Gemini 内部模型 ID 带 `gemini:` 前缀，请求中发送原始模型 ID。
   `stop` 字符串或至多四个字符串、`n: 1`、`stream_options.include_usage`。
 - 真实 token 用量、`finish_reason: stop/length`，流结束标记 `[DONE]`。
 
-仅暴露本地 MLX，不代理云端模型，也不产生 Gemini API 费用。
+仅暴露本地 MLX，不代理云端模型，也不产生 OpenAI / Gemini API 费用。
 本地服务使用 Chat Completions，未实现 `/v1/responses`、工具调用、媒体输入、
 结构化输出或 embedding。未支持的参数返回 HTTP 400，而不是被静默忽略。
 客户端须发送带 Content-Length 的 HTTP/1.x JSON 请求，单次正文至多 1 MiB。
@@ -106,13 +131,16 @@ python3 Tests/run-asr-tests.py \
 OpenAI Responses/Chat Completions 客户端使用受控 HTTP 夹具验证请求格式、中文 SSE、
 多行事件、CRLF、401/429、生成失败、断流和取消；不访问真实账户或读取个人 API Key。
 Gemini 回归额外验证 Google 端点、独立配置和密钥账户、消息历史与最终用量。
-真实 Google 账户调用需在 App 设置中配置 Gemini API Key 后验证。
+OpenAI 回归验证固定官方端点、Responses 默认值、Chat Completions 切换、独立密钥账户、
+输出上限用量，以及开关和模型列表与 Gemini 的隔离。
+这些远程协议检查使用 HTTP 夹具；真实账户调用需在 App 设置中配置各自的 API Key 后验证。
 仅运行离线协议测试可使用 `--remote-api-only`，无需本地权重或个人密钥。
-`--remote-store-only --cache <HF缓存>` 独立验证 Gemini 模型选择和旧 OpenAI 会话保留，
+`--remote-store-only --cache <HF缓存>` 独立验证 OpenAI / Gemini 模型选择和旧会话保留，
 只扫描缓存，不加载权重推理。
 
 `--chat-store` 使用内存 SwiftData 和独立设置验证旧会话保留、主聊天/快捷补全的真实 MLX 推理、
 停止后重启，以及混合模型列表、远程模型选择和远程调用禁用时不会回退至本地模型。
+还检查同名远程模型的提供方隔离、HF_HOME 不可用时仅使用远程模型，以及关闭提供方后不回退。
 这些测试共用一个测试可执行文件，请顺序运行。
 
 远程协议依据：[Google Gemini 兼容接口](https://ai.google.dev/gemini-api/docs/openai)。

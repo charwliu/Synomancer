@@ -5,7 +5,7 @@
 # Synomancer · 思诺曼
 
 以 SwiftUI 和 Swift + MLX 构建的 Apple Silicon 本地 AI 客户端。
-聊天、图片生成与编辑、语音识别和朗读在设备上运行；也可选用 Google Gemini 文本模型。
+聊天、图片生成与编辑、语音识别和朗读在设备上运行；也可选用 OpenAI 和 Google Gemini 文本模型。
 
 ## 功能
 
@@ -14,7 +14,7 @@
   模型兼容性以[聊天文档](docs/LocalChat.md)和[模型库说明](docs/MLXModelLibrary.md)为准。
 - FLUX / Qwen 图像生成与编辑，Qwen3-ASR 和 Qwen3-TTS 本地语音管线。
 - 原生 Hugging Face 模型下载，支持续传、分片校验及共享 HF 缓存。
-- 可选 Gemini 文本聊天，以及仅绑定 loopback、需要访问令牌的本地模型 API。
+- 可选 OpenAI / Gemini 文本聊天，以及仅绑定 loopback、需要访问令牌的本地模型 API。
 
 不同模型需要不同的内存容量、权重格式和访问权限；下载完成不代表该架构已受支持。
 仓库不包含模型权重、个人配置、访问凭证、录音或验收日志。
@@ -103,11 +103,13 @@ xcodebuild -project Synomancer.xcodeproj -scheme Synomancer-Release \
 1. 在设置 → Hugging Face 中选择 **HF_HOME** 并授权访问。
    未配置时使用当前用户主目录下的 `.cache/huggingface/hub`；可自行选择其他磁盘。
 2. 下载兼容模型，或选择已有的完整 HF 缓存，刷新模型列表后选择模型。
-3. Gemini API Key 在设置中输入并保存在 Keychain；HF Token 仅供本次下载使用。
+3. 在设置中启用 OpenAI 或 Gemini，输入各自的 API Key，并选择账户可用的文本模型。
+   两者密钥分别保存在 Keychain；OpenAI 默认使用 Responses，也可切换 Chat Completions。
+   HF Token 仅供本次下载使用。
    不要将凭证写进代码、配置示例、日志或提交信息。
 
-本地模型推理不需要外部推理服务。Hugging Face 下载会访问网络；启用 Gemini 后，
-远程请求会把会话文本发送到 Google。
+本地模型推理不需要外部推理服务。Hugging Face 下载会访问网络；选择远程模型后，
+会话文本会发送到所选提供方 OpenAI 或 Google。
 
 ## 文档与测试
 
@@ -117,7 +119,7 @@ xcodebuild -project Synomancer.xcodeproj -scheme Synomancer-Release \
 | MLX 模型库和量化适配 | [MLXModelLibrary.md](docs/MLXModelLibrary.md) |
 | 图像生成与编辑 | [LocalImages.md](docs/LocalImages.md) |
 | HF 下载与缓存 | [HuggingFaceDownloads.md](docs/HuggingFaceDownloads.md) |
-| Gemini 与本地 API | [ChatAPI.md](docs/ChatAPI.md) |
+| OpenAI、Gemini 与本地 API | [ChatAPI.md](docs/ChatAPI.md) |
 | 语音识别 | [LocalSpeechRecognition.md](docs/LocalSpeechRecognition.md) |
 | 朗读 | [LocalTextToSpeech.md](docs/LocalTextToSpeech.md) |
 

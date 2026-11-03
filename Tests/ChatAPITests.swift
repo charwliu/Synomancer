@@ -6,7 +6,7 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
     static var observed: [String: Data] = [:]
     private let stateLock = NSLock()
     private var stopped = false
-    override class func canInit(with request: URLRequest) -> Bool { ["api.fixture.invalid", "generativelanguage.googleapis.com"].contains(request.url?.host ?? "") }
+    override class func canInit(with request: URLRequest) -> Bool { ["api.fixture.invalid", "api.openai.com", "generativelanguage.googleapis.com"].contains(request.url?.host ?? "") }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let path = request.url!.path
@@ -32,6 +32,7 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
         if status != 200 { payload = "{\"error\":{\"message\":\"fixture API failure\"}}" }
         else if path.hasSuffix("models") { payload = "{\"data\":[{\"id\":\"fixture-model\"},{\"id\":\"another-model\"}]}" }
         else if path.contains("failed") { payload = "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"message\":\"fixture generation failure\"}}}\n\n" }
+        else if path.contains("limited") { payload = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\ndata: {\"type\":\"response.incomplete\",\"response\":{\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}}\n\n" }
         else if path.contains("truncated") { payload = "data: {\"choices\":[{\"delta\":{\"content\":\"partial\"},\"finish_reason\":null}]}\n\n" }
         else if path.hasSuffix("responses") {
             payload = ": heartbeat\r\n\r\nevent: response.output_text.delta\r\ndata: {\"type\":\"response.output_text.delta\",\r\ndata: \"delta\":\"你好\"}\r\n\r\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"，MLX\"}\r\n\r\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}}\r\n\r\n"
@@ -105,8 +106,37 @@ struct ChatAPITests {
         let suite = "Synomancer.GeminiTest." + UUID().uuidString
         let preferences = UserDefaults(suiteName: suite)!
         defer { preferences.removePersistentDomain(forName: suite) }
+        var keyReads = 0
+        do {
+            _ = try OpenAIConfiguration.load(in: preferences, readKey: { keyReads += 1; return "fixture-key" })
+            preconditionFailure("Disabled OpenAI accepted")
+        } catch { precondition(error.localizedDescription.contains("OpenAI is disabled") && keyReads == 0) }
+        do { _ = try OpenAIConfiguration.transport(apiKey: "  "); preconditionFailure("Empty OpenAI key") }
+        catch { precondition(error.localizedDescription.contains("OpenAI API key")) }
         preferences.set(true, forKey: "openAIEnabled")
-        preferences.set("old-model", forKey: "openAIModels")
+        preferences.set(" fixture-model \nfixture-model\nanother-model\n", forKey: "openAIModels")
+        preferences.set("https://api.fixture.invalid/untrusted", forKey: "openAIBaseURL")
+        let openAI = try OpenAIConfiguration.load(in: preferences, readKey: { " fixture-key " })
+        precondition(openAI.baseURL.absoluteString == "https://api.openai.com/v1")
+        precondition(openAI.apiKey == "fixture-key" && openAI.useResponses && !openAI.sendTemperature)
+        precondition(OpenAIConfiguration.keychainAccount == "openai" && OpenAIConfiguration.keychainAccount != GeminiConfiguration.keychainAccount)
+        precondition(OpenAIConfiguration.modelIDs(in: preferences) == ["another-model", "fixture-model"])
+        let openAIResult = try await client.generate(modelID: "fixture-model", messages: messages, configuration: openAI) { _, _ in }
+        precondition(openAIResult.text == "你好，MLX" && openAIResult.completionTokens == 5)
+        let openAIBody = OpenAIFixtureProtocol.body("/v1/responses")
+        precondition(openAIBody["store"] as? Bool == false && openAIBody["temperature"] == nil)
+        precondition((openAIBody["input"] as? [[String: String]]) == messages.map { ["role": $0.role, "content": $0.content] })
+        let openAIModels = try await client.models(configuration: openAI)
+        precondition(openAIModels == ["another-model", "fixture-model"])
+        preferences.set(false, forKey: "openAIUseResponses")
+        preferences.set(true, forKey: "openAISendTemperature")
+        let openAIChat = try OpenAIConfiguration.load(in: preferences, readKey: { "fixture-key" })
+        let openAIChatResult = try await client.generate(modelID: "fixture-model", messages: messages, configuration: openAIChat, temperature: 0.25) { _, _ in }
+        precondition(openAIChatResult.text == "hello MLX" && !openAIChat.useResponses)
+        precondition((OpenAIFixtureProtocol.body("/v1/chat/completions")["temperature"] as? NSNumber)?.doubleValue == 0.25)
+        preferences.set(false, forKey: "openAIEnabled")
+        precondition(OpenAIConfiguration.modelIDs(in: preferences).isEmpty)
+        print("PASS: official OpenAI endpoint, independent settings/key account, Responses default, Chat mode, history, model discovery and usage (HTTP fixture)")
         precondition(GeminiConfiguration.modelIDs(in: preferences).isEmpty)
         do { _ = try GeminiConfiguration.load(in: preferences); preconditionFailure("Legacy settings must not enable Gemini") }
         catch { precondition(error.localizedDescription.contains("Gemini is disabled")) }
@@ -135,6 +165,8 @@ struct ChatAPITests {
         precondition((OpenAIFixtureProtocol.body("/v1/chat/completions")["messages"] as? [[String: String]])?.count == 2)
         let models = try await client.models(configuration: config())
         precondition(models == ["another-model", "fixture-model"])
+        let limited = try await client.generate(modelID: "fixture-model", messages: messages, configuration: config("limited/")) { _, _ in }
+        precondition(limited.text == "partial" && limited.finishReason == "length" && limited.promptTokens == 12 && limited.completionTokens == 5)
         for prefix in ["unauthorized/", "rate-limit/", "truncated/", "failed/"] {
             do {
                 _ = try await client.generate(modelID: "fixture-model", messages: messages, configuration: config(prefix, responses: prefix != "truncated/")) { _, _ in }

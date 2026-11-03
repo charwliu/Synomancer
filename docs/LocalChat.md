@@ -90,11 +90,11 @@ patch/token 数量和缓存发现。它不代表真实 30B 模型推理通过。
 现有 Qwen2-VL 视觉实现未通过颜色识别测试，因此该模型暂时不开放图片输入。
 该本地模型的图像输入会在推理前报明确错误。
 
-可选的 Gemini 远程模型和本地 OpenAI 兼容 API 见 [ChatAPI.md](ChatAPI.md)。
+可选的 OpenAI / Gemini 远程模型和本地 OpenAI 兼容 API 见 [ChatAPI.md](ChatAPI.md)。
 
 旧会话和它们关联的旧模型记录保留。打开旧会话时，模型选择器回退到本地模型；
 发送下一条消息时，继续使用原有消息历史并更新该会话的模型关联。
-枚举中的旧 provider 值只用于解码历史记录，没有对应运行后端。
+旧 Ollama provider 值只用于解码历史记录；OpenAI / Gemini 按设置中的启用状态调用各自后端。
 
 普通回答每四个 token 更新一次 UI，MTP 按上游文本 chunk 更新，完成时保存完整输出，停止时保留已生成文字。
 请求标识防止旧任务回调修改新回答，取消按 token 步进检查。

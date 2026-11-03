@@ -98,7 +98,7 @@ Cmlx cLogSupport Numerics ComplexModule RealModule _NumericsShims Hub Tokenizers
 Jinja OrderedCollections DequeModule InternalCollectionsUtilities yyjson
 HuggingFace Crypto Logging EventSource'''.split()
 executable = products / 'SynomancerASRSmoke'
-sdk = subprocess.check_output(['xcrun', '--show-sdk-path'], text=True).strip()
+sdk = subprocess.check_output(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], text=True).strip()
 command = ['swiftc', '-swift-version', '5', '-parse-as-library',
            '-O' if args.configuration == 'Release' else '-Onone',
            '-module-cache-path', str(root / '.build/TestModuleCache'),

@@ -15,8 +15,12 @@ enum ChatGenerationService {
             let configuration = try GeminiConfiguration.load(in: preferences)
             return try await OpenAIChatService.shared.generate(modelID: modelID, messages: messages,
                 configuration: configuration, temperature: temperature ?? 0.6, onUpdate: onUpdate)
-        case .ollama, .openai:
-            throw OpenAIError.message("This saved model is no longer supported. Select a local MLX or Gemini model.")
+        case .openai:
+            let configuration = try OpenAIConfiguration.load(in: preferences)
+            return try await OpenAIChatService.shared.generate(modelID: modelID, messages: messages,
+                configuration: configuration, temperature: temperature ?? 0.6, onUpdate: onUpdate)
+        case .ollama:
+            throw OpenAIError.message("This saved model is no longer supported. Select a local MLX, OpenAI or Gemini model.")
         }
     }
 }
