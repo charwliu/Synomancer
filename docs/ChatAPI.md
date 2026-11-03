@@ -79,6 +79,21 @@ Gemini 内部模型 ID 带 `gemini:` 前缀，请求中发送原始模型 ID。
 失败不会自动回退，停止回答会取消网络请求。
 本次迁移保持原远程入口的文本范围，不启用图片、工具调用或音频。
 
+### Gemini 返回 HTTP 429
+
+429 可能是请求/输入 token 的短时限流，也可能是项目的每日配额或其他额度限制。
+单凭旧提示 `API HTTP 429: client error` 无法判断具体原因。
+App 现在解析错误对象、数组和 SSE 错误，显示服务端 message、`RESOURCE_EXHAUSTED` 等状态、
+配额指标/配额值以及 `Retry-After` 或 `google.rpc.RetryInfo` 中的等待时间；当前 API Key 会脱敏。
+模型列表读取失败也使用同一诊断信息。若响应没有可解析详情，仍会显示明确的限流/配额提示。
+这些提示不会自动触发重试。
+
+请在 [AI Studio 活跃限额](https://aistudio.google.com/rate-limit) 查看所选模型所属项目的限制。
+短时限流可按服务端提示等待后再试；每日额度耗尽或配额为零时，应检查该项目的配额与用量层级，
+不能仅凭短暂等待认定会恢复。限额按项目生效，同项目的不同 API Key 共用限制。
+依据：[Google 限额说明](https://aistudio.google.com/docs/rate-limits)、
+[Google 错误排查](https://aistudio.google.com/docs/troubleshooting)。
+
 ## 向其他程序提供本地模型 API
 
 设置 → **Local API** 标签 → **Local MLX API**：

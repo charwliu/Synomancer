@@ -20,7 +20,9 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
         precondition(request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-key")
         let status = path.contains("unauthorized") ? 401 : path.contains("rate-limit") ? 429 : 200
         let type = status == 200 && !path.hasSuffix("models") ? "text/event-stream" : "application/json"
-        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": type])!, cacheStoragePolicy: .notAllowed)
+        var headers = ["Content-Type": type]
+        if status == 429 { headers["Retry-After"] = "7" }
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!, cacheStoragePolicy: .notAllowed)
         if path.contains("slow") {
             DispatchQueue.global().asyncAfter(deadline: .now() + 10) { [self] in
                 stateLock.lock(); defer { stateLock.unlock() }
@@ -29,7 +31,10 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         let payload: String
-        if status != 200 { payload = "{\"error\":{\"message\":\"fixture API failure fixture-key\"}}" }
+        if path.contains("gemini-rate-limit") {
+            payload = "[{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\",\"message\":\"fixture quota exceeded fixture-key\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.RetryInfo\",\"retryDelay\":\"12s\"}]}}]"
+        }
+        else if status != 200 { payload = "{\"error\":{\"message\":\"fixture API failure fixture-key\"}}" }
         else if path.hasSuffix("models") { payload = "{\"data\":[{\"id\":\"fixture-model\"},{\"id\":\"another-model\"}]}" }
         else if path.contains("failed") { payload = "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"message\":\"fixture generation failure fixture-key\"}}}\n\n" }
         else if path.contains("limited") { payload = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\ndata: {\"type\":\"response.incomplete\",\"response\":{\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}}\n\n" }
@@ -56,6 +61,7 @@ final class OpenAIFixtureProtocol: URLProtocol, @unchecked Sendable {
 struct ChatAPITests {
     static func main() async throws {
         setbuf(stdout, nil)
+        try RemoteAPIHTTPErrorTests.run()
         try await LocalAPIAccessTokenTests.run()
         try OpenAIServiceTests.configurationTests()
         try OpenAIEndpointTests.configurationTests()
@@ -179,6 +185,20 @@ struct ChatAPITests {
                 if prefix != "truncated/" { precondition(error.localizedDescription.contains("[redacted]")) }
             }
         }
+        let googleRateLimit = OpenAIConfiguration(baseURL: URL(string: "https://generativelanguage.googleapis.com/gemini-rate-limit/v1beta/openai")!,
+            apiKey: "fixture-key", useResponses: false, sendTemperature: false)
+        for modelsRequest in [false, true] {
+            do {
+                if modelsRequest { _ = try await client.models(configuration: googleRateLimit) }
+                else { _ = try await client.generate(modelID: "fixture-model", messages: messages, configuration: googleRateLimit) { _, _ in } }
+                preconditionFailure("Expected Gemini quota error")
+            } catch let error as OpenAIError {
+                let text = error.localizedDescription
+                precondition(text.contains("HTTP 429") && text.contains("RESOURCE_EXHAUSTED") && text.contains("fixture quota exceeded"))
+                precondition(text.contains("12 seconds") && text.contains("Google AI Studio") && text.contains("[redacted]") && !text.contains("fixture-key"))
+            }
+        }
+        print("PASS: Gemini array-shaped 429 details, retry guidance and key redaction reach both streaming generation and model discovery")
         let slow = Task { try await client.generate(modelID: "fixture-model", messages: messages, configuration: config("slow/")) { _, _ in } }
         try await Task.sleep(for: .milliseconds(100)); slow.cancel()
         do { _ = try await slow.value; preconditionFailure("Expected cancelled API call") }

@@ -138,10 +138,16 @@ elif args.chat or args.chat_store or args.chat_api or args.chat_library or args.
         command += [str(root / path) for path in [
             'Applications/Synomancer/Services/OpenAIConfiguration.swift',
             'Applications/Synomancer/Services/OpenAIServices.swift',
-            'Applications/Synomancer/Services/OpenAIChatService.swift']]
+            'Applications/Synomancer/Services/OpenAIChatService.swift',
+            'Applications/Synomancer/Services/RemoteAPIHTTPError.swift']]
     if args.chat_api:
-        command += [str(root / 'Applications/Synomancer/Services/ChatGenerationService.swift'), str(root / 'Applications/Synomancer/Models/LanguageModel.swift')]
-        command += [str(root / 'Applications/Synomancer/Services/LocalChatAPIServer.swift'), str(root / 'Tests/OpenAIEndpointTests.swift'), str(root / 'Tests/OpenAIServiceTests.swift'), str(root / 'Applications/Synomancer/Services/LocalAPIAccessToken.swift'), str(root / 'Tests/LocalAPIAccessTokenTests.swift')]
+        command += [str(root / path) for path in [
+            'Applications/Synomancer/Services/ChatGenerationService.swift',
+            'Applications/Synomancer/Models/LanguageModel.swift',
+            'Applications/Synomancer/Services/LocalChatAPIServer.swift',
+            'Applications/Synomancer/Services/LocalAPIAccessToken.swift',
+            'Tests/OpenAIEndpointTests.swift', 'Tests/OpenAIServiceTests.swift',
+            'Tests/LocalAPIAccessTokenTests.swift', 'Tests/RemoteAPIHTTPErrorTests.swift']]
     if args.chat_store:
         command += [str(root / 'Applications/Synomancer/Services/ChatGenerationService.swift'), str(root / 'Applications/Synomancer/Services/AutomaticResponseSpeech.swift')]
         objects += ['Synogging']

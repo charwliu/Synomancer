@@ -84,9 +84,7 @@ actor OpenAIChatService {
                 data.append(byte)
                 if data.count >= 65536 { break }
             }
-            let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-            let detail = (json?["error"] as? [String: Any])?["message"] as? String
-            throw OpenAIError.message("API HTTP \(http.statusCode): \(redacted(detail ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode), configuration: configuration))")
+            throw RemoteAPIHTTPError.make(response: http, data: data, configuration: configuration)
         }
         guard http.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("text/event-stream") == true else {
             throw OpenAIError.message("The API did not return an SSE stream.")
@@ -158,8 +156,10 @@ actor OpenAIChatService {
         var request = try request(configuration: configuration, path: "models")
         request.timeoutInterval = 30
         let (data, response) = try await session.data(for: request, delegate: redirectDelegate)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw OpenAIError.message("Could not list API models. Check the endpoint and API key.")
+        guard let http = response as? HTTPURLResponse else { throw OpenAIError.message("Invalid API response.") }
+        guard (200..<300).contains(http.statusCode) else {
+            let error = RemoteAPIHTTPError.make(response: http, data: data, configuration: configuration)
+            throw OpenAIError.message("Could not list API models. " + error.localizedDescription)
         }
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return ((object?["data"] as? [[String: Any]]) ?? []).compactMap { $0["id"] as? String }.sorted()
